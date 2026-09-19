@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Typografie-Vorschläge - Tom Schiller</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Allura&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500&family=Great+Vibes&family=Manrope:wght@400;500;600&family=Pinyon+Script&display=swap" rel="stylesheet">
+  <style>
+    @page { size: A4; margin: 0; }
+    :root { --ink:#090909; --paper:#fbf7e7; --mist:#d8d5c8; --muted:#77746d; }
+    * { box-sizing:border-box; }
+    body { margin:0; color:var(--ink); background:var(--paper); font-family:Manrope,Arial,sans-serif; }
+    .page { width:210mm; min-height:297mm; padding:17mm 18mm 16mm; position:relative; page-break-after:always; background:var(--paper); }
+    .page:last-child { page-break-after:auto; }
+    .rule { width:100%; height:1px; background:var(--ink); opacity:.4; }
+    .caps { font-size:8.5pt; font-weight:600; letter-spacing:.17em; text-transform:uppercase; }
+    .small { font-size:8.5pt; line-height:1.55; color:var(--muted); }
+    .cover { background:var(--ink); color:var(--paper); display:flex; flex-direction:column; justify-content:space-between; }
+    .cover .rule { background:var(--paper); opacity:.45; }
+    .brand { font-family:'Great Vibes',cursive; font-size:52pt; line-height:1; margin:0 0 10mm; }
+    .title { max-width:410px; font-family:'Cormorant Garamond',serif; font-weight:500; font-size:38pt; line-height:.98; margin:19mm 0 9mm; }
+    .intro { max-width:400px; font-size:11pt; line-height:1.65; color:#d8d5c8; }
+    .footer { display:flex; justify-content:space-between; align-items:flex-end; }
+    h2 { font-family:'Cormorant Garamond',serif; font-size:27pt; font-weight:500; line-height:1; margin:7mm 0 2mm; }
+    .lead { max-width:490px; font-size:10.5pt; line-height:1.6; margin:0 0 9mm; }
+    .option { padding:8mm 0 7mm; border-top:1px solid var(--mist); display:grid; grid-template-columns:29mm 1fr; gap:7mm; }
+    .num { font-size:9pt; letter-spacing:.12em; color:var(--muted); padding-top:4pt; }
+    .name { font-family:'Cormorant Garamond',serif; font-size:18pt; margin:0 0 2mm; }
+    .meta { font-size:8.5pt; letter-spacing:.08em; text-transform:uppercase; color:var(--muted); margin-bottom:3mm; }
+    .specimen { color:var(--ink); margin:0 0 3mm; white-space:nowrap; }
+    .great { font-family:'Great Vibes',cursive; font-size:39pt; line-height:1.02; }
+    .allura { font-family:Allura,cursive; font-size:42pt; line-height:1.02; }
+    .pinyon { font-family:'Pinyon Script',cursive; font-size:38pt; line-height:1.02; }
+    .cormorant { font-family:'Cormorant Garamond',serif; font-style:italic; font-size:32pt; line-height:1.04; }
+    .recommend { margin-top:4mm; padding:5mm 6mm; background:#f0eddf; font-size:9pt; line-height:1.6; }
+    .recommend b { font-weight:600; }
+    .pairing { margin-top:8mm; padding:8mm; background:var(--ink); color:var(--paper); }
+    .pairing h3 { margin:0 0 5mm; font-size:9pt; letter-spacing:.16em; text-transform:uppercase; font-weight:600; }
+    .pairing .display { font-family:'Cormorant Garamond',serif; font-size:30pt; font-weight:500; line-height:1; }
+    .pairing .ui { margin:4mm 0 0; font-size:10pt; line-height:1.55; color:#d8d5c8; }
+    .matrix { margin-top:8mm; display:grid; grid-template-columns:38mm 1fr; border-top:1px solid var(--ink); }
+    .matrix div { min-height:13mm; padding:4mm 0; border-bottom:1px solid var(--mist); font-size:9pt; line-height:1.45; }
+    .matrix div:nth-child(odd) { color:var(--muted); letter-spacing:.08em; text-transform:uppercase; font-size:8pt; padding-right:6mm; }
+    .do { margin-top:10mm; display:grid; grid-template-columns:1fr 1fr; gap:9mm; }
+    .do section { padding-top:4mm; border-top:1px solid var(--ink); }
+    .do h3 { margin:0 0 3mm; font-size:9pt; letter-spacing:.13em; text-transform:uppercase; }
+    .do p { margin:0; font-size:9pt; line-height:1.6; }
+  </style>
+</head>
+<body>
+  <section class="page cover">
+    <div>
+      <div class="caps">Tom Schiller · Typografie-Studie</div>
+      <div class="rule" style="margin-top:6mm"></div>
+      <div class="title">Schriften für eine Marke mit Handschrift.</div>
+      <p class="intro">Das Logo verbindet feine Kontraste, lange Schwünge und eine persönliche Signatur. Die Empfehlungen bewahren diesen Charakter, ohne die Lesbarkeit im Shop zu opfern.</p>
+    </div>
+    <div>
+      <p class="brand">Tom Schiller</p>
+      <div class="footer small"><span>Schriftvorschläge für Web &amp; Produktkommunikation</span><span>September 2026</span></div>
+    </div>
+  </section>
+
+  <section class="page">
+    <div class="caps">Auswahl</div>
+    <h2>Die Signatur als Leitmotiv.</h2>
+    <p class="lead">Kalligrafische Schriften sollten sparsam eingesetzt werden: für die Wortmarke, Duftnamen, einzelne Kampagnenzeilen oder besondere Editorial-Momente. Für Navigation, Preise und Produktinformationen braucht die Marke einen ruhigen Gegenpol.</p>
+
+    <article class="option">
+      <div class="num">01 / Favorit</div><div><p class="name">Great Vibes</p><div class="meta">Kalligrafisch · kontrastreich · elegant</div><p class="specimen great">Tom Schiller</p><p class="small">Die engste Annäherung an die vorhandene Wortmarke: feiner Strichkontrast, weite Oberlängen und ein klarer, luxuriöser Duktus.</p><div class="recommend"><b>Empfehlung:</b> Für Wortmarke, Duftnamen und sehr kurze Claims. Nicht für Fließtext oder kleine Bildschirmgrößen.</div></div>
+    </article>
+    <article class="option">
+      <div class="num">02</div><div><p class="name">Allura</p><div class="meta">Leicht · persönlich · modern</div><p class="specimen allura">Made in Kirchheim</p><p class="small">Reduzierter und luftiger als Great Vibes. Die Schrift wirkt handgemacht, bleibt aber für kurze Zeilen besser lesbar.</p><div class="recommend"><b>Empfehlung:</b> Für Herkunftszeilen, saisonale Botschaften und handschriftliche Akzente in Kampagnen.</div></div>
+    </article>
+    <article class="option">
+      <div class="num">03</div><div><p class="name">Pinyon Script</p><div class="meta">Zeremoniell · klassisch · opulent</div><p class="specimen pinyon">Freiherr</p><p class="small">Eine bewusst feierliche Script-Schrift mit starkem Parfum- und Maison-Gefühl. Sie setzt einen dramatischeren Akzent als die Wortmarke.</p><div class="recommend"><b>Empfehlung:</b> Für limitierte Editionen, Geschenksets oder Duftkollektionen. Nur groß und mit viel Freiraum verwenden.</div></div>
+    </article>
+  </section>
+
+  <section class="page">
+    <div class="caps">Systemempfehlung</div>
+    <h2>Ein Kontrast, der den Shop trägt.</h2>
+    <p class="lead">Die Signatur braucht keine zweite Script-Schrift als Dauerbegleitung. Ein kultivierter Serif für die Redaktion und ein klarer Sans-Serif für die Bedienung schaffen die nötige Ruhe.</p>
+    <article class="option">
+      <div class="num">04</div><div><p class="name">Cormorant Garamond</p><div class="meta">Editorial · fein · charaktervoll</div><p class="specimen cormorant">Duft mit Charakter</p><p class="small">Die feinen Formen und kursiven Schnitte knüpfen an die Eleganz der Wortmarke an, ohne sie zu imitieren. Ideal für große Überschriften und Duftgeschichten.</p><div class="recommend"><b>Empfehlung:</b> Für H1-H3, Editorial-Texte, Zitate und die Namen von Kollektionen. Der reguläre Schnitt bleibt lesbarer als die Script-Schriften.</div></div>
+    </article>
+    <div class="pairing"><h3>Empfohlenes Duo</h3><div class="display">Cormorant Garamond für Atmosphäre.</div><p class="ui">Manrope für Navigation, Preise, Buttons und Produktdetails. Die sachliche Sans-Serif hält das Einkaufserlebnis präzise und gut lesbar.</p></div>
+    <div class="matrix">
+      <div>Wortmarke</div><div>Bestehendes Logo beibehalten. Great Vibes nur einsetzen, wenn eine digitale Ergänzung nötig ist.</div>
+      <div>Hero / Headlines</div><div>Cormorant Garamond Medium. Große Größen, wenig Text, großzügige Zeilenhöhe.</div>
+      <div>Duftnamen</div><div>Cormorant Garamond Italic oder Great Vibes, abhängig von der gewünschten Exklusivität.</div>
+      <div>Shop-UI</div><div>Manrope 400-600. Keine Script- oder Serif-Schrift in Preis, Navigation, Filter oder Checkout.</div>
+    </div>
+    <div class="do"><section><h3>Unbedingt</h3><p>Script-Schriften nur als Akzent einsetzen. Genug Weißraum lassen. Auf kleinen Screens die Wortmarke nicht unter 30 px setzen.</p></section><section><h3>Vermeiden</h3><p>Mehrere Script-Schriften auf einer Fläche, lange Absätze in Kursivschrift oder verspielte Schriften für Produktdaten und Buttons.</p></section></div>
+  </section>
+</body>
+</html>
