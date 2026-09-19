@@ -1,0 +1,335 @@
+{% comment %}
+  TOM SCHILLER – Charakterzitat
+  Liest das Produkt-Metafeld:
+    custom.charakterzitat
+
+  Scrollanimation:
+    - fährt von unten ein
+    - blendet gleichzeitig von transparent zu sichtbar
+    - wird beim Verlassen zurückgesetzt und beim erneuten Eintritt wieder abgespielt
+{% endcomment %}
+
+{% liquid
+  assign ts_character_quote = product.metafields.custom.charakterzitat.value
+%}
+
+{% if ts_character_quote != blank or section.settings.fallback_quote != blank %}
+  <section
+    id="TSCharacterQuote-{{ section.id }}"
+    class="ts-character-quote"
+    data-ts-character-quote
+    style="
+      --ts-cq-bg: {{ section.settings.background_color }};
+      --ts-cq-text: {{ section.settings.text_color }};
+      --ts-cq-size-desktop: {{ section.settings.font_size_desktop }}px;
+      --ts-cq-size-mobile: {{ section.settings.font_size_mobile }}px;
+      --ts-cq-line-height: {{ section.settings.line_height | divided_by: 100.0 }};
+      --ts-cq-max-width: {{ section.settings.max_width }}px;
+      --ts-cq-padding-desktop: {{ section.settings.padding_vertical_desktop }}px;
+      --ts-cq-padding-mobile: {{ section.settings.padding_vertical_mobile }}px;
+      --ts-cq-rise: {{ section.settings.rise_distance }}px;
+      --ts-cq-duration: {{ section.settings.animation_duration }}ms;
+    "
+  >
+    <div class="ts-character-quote__inner">
+      <div class="ts-character-quote__text" data-ts-character-quote-text>
+        {% if ts_character_quote != blank %}
+          {{ ts_character_quote | escape | newline_to_br }}
+        {% else %}
+          {{ section.settings.fallback_quote | escape | newline_to_br }}
+        {% endif %}
+      </div>
+    </div>
+  </section>
+
+  {% style %}
+    {{ section.settings.quote_font | font_face: font_display: 'swap' }}
+
+    #TSCharacterQuote-{{ section.id }} {
+      position: relative;
+      width: 100vw;
+      max-width: none;
+      margin-right: calc(50% - 50vw);
+      margin-left: calc(50% - 50vw);
+      overflow: hidden;
+      color: var(--ts-cq-text);
+      background: var(--ts-cq-bg);
+    }
+
+    @supports (width: 100dvw) {
+      #TSCharacterQuote-{{ section.id }} {
+        width: 100dvw;
+        margin-right: calc(50% - 50dvw);
+        margin-left: calc(50% - 50dvw);
+      }
+    }
+
+    #TSCharacterQuote-{{ section.id }} .ts-character-quote__inner {
+      display: flex;
+      width: 100%;
+      min-height: {{ section.settings.min_height_desktop }}px;
+      padding: var(--ts-cq-padding-desktop) 5vw;
+      align-items: center;
+      justify-content: center;
+    }
+
+    #TSCharacterQuote-{{ section.id }} .ts-character-quote__text {
+      width: 100%;
+      max-width: var(--ts-cq-max-width);
+      margin: 0 auto;
+      font-family:
+        {{ section.settings.quote_font.family }},
+        {{ section.settings.quote_font.fallback_families }};
+      font-size: var(--ts-cq-size-desktop);
+      font-style: {{ section.settings.font_style }};
+      font-weight: {{ section.settings.quote_font.weight }};
+      line-height: var(--ts-cq-line-height);
+      letter-spacing: -.02em;
+      text-align: {{ section.settings.text_alignment }};
+      opacity: 0;
+      transform: translate3d(0, var(--ts-cq-rise), 0);
+      will-change: transform, opacity;
+    }
+
+    #TSCharacterQuote-{{ section.id }}.is-visible .ts-character-quote__text {
+      opacity: 1;
+      transform: translate3d(0, 0, 0);
+      transition:
+        transform var(--ts-cq-duration) cubic-bezier(.22, .72, .18, 1),
+        opacity calc(var(--ts-cq-duration) * .82) ease;
+    }
+
+    @media screen and (max-width: 749px) {
+      #TSCharacterQuote-{{ section.id }} .ts-character-quote__inner {
+        min-height: {{ section.settings.min_height_mobile }}px;
+        padding: var(--ts-cq-padding-mobile) 22px;
+      }
+
+      #TSCharacterQuote-{{ section.id }} .ts-character-quote__text {
+        font-size: var(--ts-cq-size-mobile);
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      #TSCharacterQuote-{{ section.id }} .ts-character-quote__text {
+        opacity: 1 !important;
+        transform: none !important;
+        transition: none !important;
+      }
+    }
+  {% endstyle %}
+
+  <script>
+    (() => {
+      const section = document.getElementById('TSCharacterQuote-{{ section.id }}');
+      if (!section || section.dataset.initialized === 'true') return;
+      section.dataset.initialized = 'true';
+
+      const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+      if (reducedMotion || !('IntersectionObserver' in window)) {
+        section.classList.add('is-visible');
+        return;
+      }
+
+      const observer = new IntersectionObserver(
+        (entries) => {
+          entries.forEach((entry) => {
+            section.classList.toggle('is-visible', entry.isIntersecting);
+          });
+        },
+        {
+          threshold: 0.24,
+          rootMargin: '0px 0px -8% 0px'
+        }
+      );
+
+      observer.observe(section);
+
+      document.addEventListener('shopify:section:unload', (event) => {
+        if (!event.detail || event.detail.sectionId !== '{{ section.id }}') return;
+        observer.disconnect();
+      });
+    })();
+  </script>
+{% endif %}
+
+{% schema %}
+{
+  "name": "Charakterzitat animiert",
+  "tag": "section",
+  "class": "section",
+  "settings": [
+    {
+      "type": "color",
+      "id": "background_color",
+      "label": "Hintergrundfarbe",
+      "default": "#F6F1D9"
+    },
+    {
+      "type": "color",
+      "id": "text_color",
+      "label": "Textfarbe",
+      "default": "#1F1F1F"
+    },
+    {
+      "type": "font_picker",
+      "id": "quote_font",
+      "label": "Schriftart",
+      "default": "playfair_display_n4"
+    },
+    {
+      "type": "select",
+      "id": "font_style",
+      "label": "Schriftstil",
+      "options": [
+        {
+          "value": "normal",
+          "label": "Normal"
+        },
+        {
+          "value": "italic",
+          "label": "Kursiv"
+        }
+      ],
+      "default": "italic"
+    },
+    {
+      "type": "range",
+      "id": "font_size_desktop",
+      "label": "Textgröße Desktop",
+      "min": 28,
+      "max": 90,
+      "step": 2,
+      "unit": "px",
+      "default": 54
+    },
+    {
+      "type": "range",
+      "id": "font_size_mobile",
+      "label": "Textgröße Mobil",
+      "min": 24,
+      "max": 56,
+      "step": 2,
+      "unit": "px",
+      "default": 36
+    },
+    {
+      "type": "range",
+      "id": "line_height",
+      "label": "Zeilenhöhe",
+      "min": 90,
+      "max": 150,
+      "step": 5,
+      "unit": "%",
+      "default": 110
+    },
+    {
+      "type": "select",
+      "id": "text_alignment",
+      "label": "Textausrichtung",
+      "options": [
+        {
+          "value": "left",
+          "label": "Links"
+        },
+        {
+          "value": "center",
+          "label": "Mittig"
+        },
+        {
+          "value": "right",
+          "label": "Rechts"
+        }
+      ],
+      "default": "center"
+    },
+    {
+      "type": "range",
+      "id": "max_width",
+      "label": "Maximale Textbreite",
+      "min": 600,
+      "max": 1600,
+      "step": 50,
+      "unit": "px",
+      "default": 1250
+    },
+    {
+      "type": "range",
+      "id": "min_height_desktop",
+      "label": "Mindesthöhe Desktop",
+      "min": 300,
+      "max": 900,
+      "step": 25,
+      "unit": "px",
+      "default": 525
+    },
+    {
+      "type": "range",
+      "id": "min_height_mobile",
+      "label": "Mindesthöhe Mobil",
+      "min": 260,
+      "max": 700,
+      "step": 20,
+      "unit": "px",
+      "default": 380
+    },
+    {
+      "type": "range",
+      "id": "padding_vertical_desktop",
+      "label": "Abstand oben/unten Desktop",
+      "min": 40,
+      "max": 220,
+      "step": 10,
+      "unit": "px",
+      "default": 100
+    },
+    {
+      "type": "range",
+      "id": "padding_vertical_mobile",
+      "label": "Abstand oben/unten Mobil",
+      "min": 30,
+      "max": 160,
+      "step": 10,
+      "unit": "px",
+      "default": 70
+    },
+    {
+      "type": "header",
+      "content": "Animation"
+    },
+    {
+      "type": "range",
+      "id": "rise_distance",
+      "label": "Startposition unterhalb",
+      "min": 20,
+      "max": 160,
+      "step": 10,
+      "unit": "px",
+      "default": 70
+    },
+    {
+      "type": "range",
+      "id": "animation_duration",
+      "label": "Animationsdauer",
+      "min": 400,
+      "max": 1800,
+      "step": 100,
+      "unit": "ms",
+      "default": 1000
+    },
+    {
+      "type": "textarea",
+      "id": "fallback_quote",
+      "label": "Fallback-Zitat",
+      "info": "Wird nur verwendet, wenn custom.charakterzitat beim Produkt leer ist.",
+      "default": "Er fällt auf, ohne sich aufzudrängen."
+    }
+  ],
+  "presets": [
+    {
+      "name": "Charakterzitat animiert"
+    }
+  ]
+}
+{% endschema %}

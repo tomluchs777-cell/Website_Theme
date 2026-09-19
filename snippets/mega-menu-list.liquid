@@ -1,0 +1,917 @@
+{%- doc -%}
+  Renders mega menu list markup and optional featured content.
+
+  @param {object} parent_link - The linklist to render.
+  @param {string} id - Unique ID to assign to the `<ul>` element.
+  @param {number} [grid_columns_count] - Number of grid columns for the mega menu.
+  @param {number} [grid_columns_count_tablet] - Number of grid columns for the mega menu on tablets.
+  @param {number} [grid_columns_count_collection_images] - Number of grid columns when `menu_content_type` is 'collection_images'.
+  @param {string} [menu_content_type] - Type of content: 'featured_products', 'featured_collections', 'collection_images', or 'text'.
+  @param {number} [content_aspect_ratio] - Aspect ratio for content images.
+  @param {number} [image_border_radius] - Border radius for content images.
+  @param {object} [section] - The section object.
+
+  @example
+  {% render 'mega-menu-list', parent_link: link, id: 'MegaMenuList-1', grid_columns_count: 6, menu_content_type: 'featured_products' %}
+{%- enddoc -%}
+
+{% liquid
+  comment
+    open_column_span tracks when a vertical column in the mega menu is open. Links will be stacked
+    in the column until the code closes the column span.
+  endcomment
+  assign open_column_span = false
+  assign column_count = 0
+  assign links_before_wrap = 10
+  assign max_menu_columns = grid_columns_count | default: 6
+  assign max_menu_columns_tablet = grid_columns_count_tablet | default: 4
+
+  ##
+  # We only eager load heavy elements of the page when rendering this template
+  # through the Section Rendering API.
+  #
+  # This keeps the initial render lightweight, minimizing the impact on TTFB.
+  # The second render then refreshes the page with additional content.
+  #
+  # At the moment, we check if the Section Rendering API is being used by
+  # checking if section.index is blank.
+  assign eager_loading = false
+  if section.index == blank
+    assign eager_loading = true
+  endif
+
+  comment
+    TOM SCHILLER Editorial Mega Menu:
+    Wenn im Featured-Products-Menü echte Produktlinks in der bestehenden
+    Navigation liegen, wird die Produktdarstellung direkt daraus aufgebaut.
+    Dadurch bleiben Kategorien wie "Alle Düfte" und "Proben" vollständig erhalten
+    und neue verlinkte Probensets erscheinen später automatisch.
+  endcomment
+  assign ts_editorial_menu = false
+  assign ts_nested_product_count = 0
+
+  if menu_content_type == 'featured_products'
+    for ts_group in parent_link.links
+      if ts_group.type == 'product_link'
+        assign ts_nested_product_count = ts_nested_product_count | plus: 1
+      endif
+
+      for ts_child in ts_group.links
+        if ts_child.type == 'product_link'
+          assign ts_nested_product_count = ts_nested_product_count | plus: 1
+        endif
+      endfor
+    endfor
+
+    if ts_nested_product_count > 0
+      assign ts_editorial_menu = true
+    endif
+  endif
+
+  if menu_content_type == 'collection_images'
+    assign collection_links = parent_link.links | where: 'type', 'collection_link'
+    assign catalog_links = parent_link.links | where: 'type', 'catalog_link'
+    assign collection_list_links = parent_link.links | where: 'type', 'collections_link'
+    if collection_links.size == 0 and catalog_links.size == 0 and collection_list_links.size == 0
+      assign menu_content_type = 'text'
+    endif
+  endif
+
+  if menu_content_type == 'featured_collections'
+    if parent_link.type == 'collection_link'
+      assign collection_handles = parent_link.object.handle | append: ','
+    elsif parent_link.type == 'catalog_link' or parent_link.type == 'collections_link'
+      assign collection_handles = 'all' | append: ','
+    endif
+    assign collection_links = parent_link.links | where: 'type', 'collection_link'
+    for collection_link in collection_links
+      assign collection_handles = collection_handles | append: collection_link.object.handle | append: ','
+    endfor
+  endif
+
+  if menu_content_type == 'featured_products' and ts_editorial_menu == false
+    if parent_link.type == 'collection_link'
+      assign collection_object = parent_link.object
+    elsif parent_link.type == 'catalog_link' or parent_link.type == 'collections_link'
+      assign collection_object = collections.all
+    else
+      assign menu_content_type = 'text'
+    endif
+  endif
+%}
+
+{% if ts_editorial_menu %}
+  <div
+    class="ts-mega-editorial"
+    data-ts-mega-editorial="{{ id }}"
+  >
+    <nav
+      class="ts-mega-editorial__nav"
+      aria-label="{{ parent_link.title | escape }}"
+    >
+      {% for ts_group in parent_link.links %}
+        <div class="ts-mega-editorial__nav-group">
+          <a
+            href="{{ ts_group.url }}"
+            class="ts-mega-editorial__nav-parent{% if ts_group.type == 'product_link' %} ts-mega-editorial__nav-product{% endif %}"
+            {% if ts_group.type == 'product_link' %}
+              data-ts-product-handle="{{ ts_group.object.handle | escape }}"
+            {% endif %}
+          >
+            {{- ts_group.title -}}
+          </a>
+
+          {% if ts_group.links != blank %}
+            <ul class="ts-mega-editorial__nav-children list-unstyled">
+              {% for ts_child in ts_group.links %}
+                <li>
+                  <a
+                    href="{{ ts_child.url }}"
+                    class="ts-mega-editorial__nav-child{% if ts_child.type == 'product_link' %} ts-mega-editorial__nav-product{% endif %}"
+                    {% if ts_child.type == 'product_link' %}
+                      data-ts-product-handle="{{ ts_child.object.handle | escape }}"
+                    {% endif %}
+                  >
+                    {{- ts_child.title -}}
+                  </a>
+                </li>
+              {% endfor %}
+            </ul>
+          {% endif %}
+        </div>
+      {% endfor %}
+    </nav>
+
+    <div class="ts-mega-editorial__products">
+      <div class="ts-mega-editorial__rail">
+        {% assign ts_seen_product_handles = '|' %}
+
+        {% for ts_group in parent_link.links %}
+          {% if ts_group.type == 'product_link' %}
+            {% assign ts_product = ts_group.object %}
+            {% assign ts_product_marker = '|' | append: ts_product.handle | append: '|' %}
+
+            {% unless ts_seen_product_handles contains ts_product_marker %}
+              {% assign ts_seen_product_handles = ts_seen_product_handles | append: ts_product.handle | append: '|' %}
+              {% assign ts_logo_value = ts_product.metafields.custom.parfumname_schwarz.value %}
+              {% assign ts_logo_image = ts_logo_value.preview_image | default: ts_logo_value %}
+              {% assign ts_primary_image = ts_product.featured_image %}
+              {% assign ts_hover_image = ts_product.images[1] %}
+              {% assign ts_menu_subtitle = ts_product.metafields.custom.mega_menu_untertitel.value %}
+
+              {% if ts_menu_subtitle == blank %}
+                {% assign ts_menu_subtitle = 'Extrait de Parfum · 100 ML' %}
+              {% endif %}
+
+              <a
+                href="{{ ts_product.url }}"
+                class="ts-mega-editorial__card"
+                data-ts-product-handle="{{ ts_product.handle | escape }}"
+                aria-label="{{ ts_product.title | escape }}"
+              >
+                <div class="ts-mega-editorial__media">
+                  {% if ts_primary_image != blank %}
+                    {{
+                      ts_primary_image
+                      | image_url: width: 900
+                      | image_tag:
+                        class: 'ts-mega-editorial__image ts-mega-editorial__image--primary',
+                        widths: '240, 360, 480, 640, 760, 900',
+                        sizes: '(min-width: 1200px) 18vw, 22vw',
+                        loading: 'lazy',
+                        alt: ts_product.title
+                    }}
+                  {% endif %}
+
+                  {% if ts_hover_image != blank %}
+                    {{
+                      ts_hover_image
+                      | image_url: width: 900
+                      | image_tag:
+                        class: 'ts-mega-editorial__image ts-mega-editorial__image--hover',
+                        widths: '240, 360, 480, 640, 760, 900',
+                        sizes: '(min-width: 1200px) 18vw, 22vw',
+                        loading: 'lazy',
+                        alt: ''
+                    }}
+                  {% endif %}
+                </div>
+
+                <div class="ts-mega-editorial__meta">
+                  {% if ts_logo_image != blank %}
+                    {{
+                      ts_logo_image
+                      | image_url: width: 700
+                      | image_tag:
+                        class: 'ts-mega-editorial__logo',
+                        widths: '160, 240, 360, 500, 700',
+                        sizes: '(min-width: 1200px) 12vw, 16vw',
+                        loading: 'lazy',
+                        alt: ts_product.title
+                    }}
+                  {% else %}
+                    <div class="ts-mega-editorial__title">{{ ts_product.title }}</div>
+                  {% endif %}
+
+                  <div class="ts-mega-editorial__subtitle">{{ ts_menu_subtitle }}</div>
+                  <div class="ts-mega-editorial__price">{{ ts_product.price | money }}</div>
+                </div>
+              </a>
+            {% endunless %}
+          {% endif %}
+
+          {% for ts_child in ts_group.links %}
+            {% if ts_child.type == 'product_link' %}
+              {% assign ts_product = ts_child.object %}
+              {% assign ts_product_marker = '|' | append: ts_product.handle | append: '|' %}
+
+              {% unless ts_seen_product_handles contains ts_product_marker %}
+                {% assign ts_seen_product_handles = ts_seen_product_handles | append: ts_product.handle | append: '|' %}
+                {% assign ts_logo_value = ts_product.metafields.custom.parfumname_schwarz.value %}
+                {% assign ts_logo_image = ts_logo_value.preview_image | default: ts_logo_value %}
+                {% assign ts_primary_image = ts_product.featured_image %}
+                {% assign ts_hover_image = ts_product.images[1] %}
+                {% assign ts_menu_subtitle = ts_product.metafields.custom.mega_menu_untertitel.value %}
+                {% assign ts_group_handle = ts_group.title | handleize %}
+
+                {% if ts_menu_subtitle == blank %}
+                  {% if ts_group_handle contains 'proben' or ts_group_handle contains 'sample' %}
+                    {% assign ts_menu_subtitle = 'Probenset' %}
+                  {% else %}
+                    {% assign ts_menu_subtitle = 'Extrait de Parfum · 100 ML' %}
+                  {% endif %}
+                {% endif %}
+
+                <a
+                  href="{{ ts_product.url }}"
+                  class="ts-mega-editorial__card"
+                  data-ts-product-handle="{{ ts_product.handle | escape }}"
+                  aria-label="{{ ts_product.title | escape }}"
+                >
+                  <div class="ts-mega-editorial__media">
+                    {% if ts_primary_image != blank %}
+                      {{
+                        ts_primary_image
+                        | image_url: width: 900
+                        | image_tag:
+                          class: 'ts-mega-editorial__image ts-mega-editorial__image--primary',
+                          widths: '240, 360, 480, 640, 760, 900',
+                          sizes: '(min-width: 1200px) 18vw, 22vw',
+                          loading: 'lazy',
+                          alt: ts_product.title
+                      }}
+                    {% endif %}
+
+                    {% if ts_hover_image != blank %}
+                      {{
+                        ts_hover_image
+                        | image_url: width: 900
+                        | image_tag:
+                          class: 'ts-mega-editorial__image ts-mega-editorial__image--hover',
+                          widths: '240, 360, 480, 640, 760, 900',
+                          sizes: '(min-width: 1200px) 18vw, 22vw',
+                          loading: 'lazy',
+                          alt: ''
+                      }}
+                    {% endif %}
+                  </div>
+
+                  <div class="ts-mega-editorial__meta">
+                    {% if ts_logo_image != blank %}
+                      {{
+                        ts_logo_image
+                        | image_url: width: 700
+                        | image_tag:
+                          class: 'ts-mega-editorial__logo',
+                          widths: '160, 240, 360, 500, 700',
+                          sizes: '(min-width: 1200px) 12vw, 16vw',
+                          loading: 'lazy',
+                          alt: ts_product.title
+                      }}
+                    {% else %}
+                      <div class="ts-mega-editorial__title">{{ ts_product.title }}</div>
+                    {% endif %}
+
+                    <div class="ts-mega-editorial__subtitle">{{ ts_menu_subtitle }}</div>
+                    <div class="ts-mega-editorial__price">{{ ts_product.price | money }}</div>
+                  </div>
+                </a>
+              {% endunless %}
+            {% endif %}
+          {% endfor %}
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+
+  {% style %}
+    [data-menu-grid-id="{{ id }}"] {
+      --menu-columns-desktop: 1;
+      --menu-columns-tablet: 1;
+    }
+
+    [data-menu-grid-id="{{ id }}"] > .ts-mega-editorial {
+      grid-column: 1 / -1;
+    }
+
+    [data-ts-mega-editorial="{{ id }}"] {
+      --ts-mega-bg: #f7f1dc;
+      --ts-mega-text: #111111;
+      --ts-mega-muted: rgba(17, 17, 17, .58);
+      --ts-mega-line: rgba(17, 17, 17, .12);
+      --ts-mega-hover-duration: 250ms;
+
+      position: relative;
+      display: grid;
+      grid-template-columns: minmax(190px, 23%) minmax(0, 77%);
+      width: 100%;
+      min-width: 0;
+      padding: 30px 0 36px;
+      color: var(--ts-mega-text);
+      background: var(--ts-mega-bg);
+      box-shadow: 0 0 0 100vmax var(--ts-mega-bg);
+      clip-path: inset(0 -100vmax);
+    }
+
+    [data-ts-mega-editorial="{{ id }}"] .ts-mega-editorial__nav {
+      min-width: 0;
+      padding: 2px clamp(24px, 3vw, 48px) 4px 0;
+      border-right: 1px solid var(--ts-mega-line);
+    }
+
+    [data-ts-mega-editorial="{{ id }}"] .ts-mega-editorial__nav-group + .ts-mega-editorial__nav-group {
+      margin-top: 1.7rem;
+      padding-top: 1.55rem;
+      border-top: 1px solid var(--ts-mega-line);
+    }
+
+    [data-ts-mega-editorial="{{ id }}"] .ts-mega-editorial__nav-parent,
+    [data-ts-mega-editorial="{{ id }}"] .ts-mega-editorial__nav-child {
+      display: inline-block;
+      color: inherit;
+      text-decoration: none;
+      transition:
+        opacity var(--ts-mega-hover-duration) ease,
+        transform var(--ts-mega-hover-duration) ease;
+    }
+
+    [data-ts-mega-editorial="{{ id }}"] .ts-mega-editorial__nav-parent {
+      font-family: var(--font-body-family, inherit);
+      font-size: .68rem;
+      font-weight: 600;
+      line-height: 1.2;
+      letter-spacing: .14em;
+      text-transform: uppercase;
+    }
+
+    [data-ts-mega-editorial="{{ id }}"] .ts-mega-editorial__nav-children {
+      display: flex;
+      margin: .78rem 0 0;
+      padding: 0;
+      flex-direction: column;
+      gap: .46rem;
+    }
+
+    [data-ts-mega-editorial="{{ id }}"] .ts-mega-editorial__nav-child {
+      color: var(--ts-mega-muted);
+      font-size: clamp(.76rem, .74vw, .86rem);
+      line-height: 1.35;
+    }
+
+    [data-ts-mega-editorial="{{ id }}"] .ts-mega-editorial__nav-parent:hover,
+    [data-ts-mega-editorial="{{ id }}"] .ts-mega-editorial__nav-child:hover,
+    [data-ts-mega-editorial="{{ id }}"] .ts-mega-editorial__nav-product.is-related {
+      color: var(--ts-mega-text);
+      opacity: 1;
+      transform: translateX(3px);
+    }
+
+    [data-ts-mega-editorial="{{ id }}"].has-product-focus
+      .ts-mega-editorial__nav-product:not(.is-related) {
+      opacity: .38;
+    }
+
+    [data-ts-mega-editorial="{{ id }}"] .ts-mega-editorial__products {
+      min-width: 0;
+      padding-left: clamp(28px, 3.4vw, 58px);
+    }
+
+    [data-ts-mega-editorial="{{ id }}"] .ts-mega-editorial__rail {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(145px, 1fr));
+      width: 100%;
+      gap: clamp(16px, 1.7vw, 30px);
+      align-items: start;
+    }
+
+    [data-ts-mega-editorial="{{ id }}"] .ts-mega-editorial__card {
+      display: block;
+      min-width: 0;
+      color: inherit;
+      text-align: center;
+      text-decoration: none;
+      opacity: 1;
+      transition:
+        opacity var(--ts-mega-hover-duration) ease,
+        transform var(--ts-mega-hover-duration) cubic-bezier(.22, .72, .18, 1);
+    }
+
+    [data-ts-mega-editorial="{{ id }}"].has-product-focus
+      .ts-mega-editorial__card:not(.is-related) {
+      opacity: .42;
+    }
+
+    [data-ts-mega-editorial="{{ id }}"] .ts-mega-editorial__card:hover,
+    [data-ts-mega-editorial="{{ id }}"] .ts-mega-editorial__card.is-related {
+      opacity: 1;
+    }
+
+    [data-ts-mega-editorial="{{ id }}"] .ts-mega-editorial__media {
+      position: relative;
+      width: 100%;
+      aspect-ratio: 4 / 5;
+      overflow: hidden;
+      background: rgba(255, 255, 255, .24);
+    }
+
+    [data-ts-mega-editorial="{{ id }}"] .ts-mega-editorial__image {
+      position: absolute;
+      inset: 0;
+      display: block;
+      width: 100%;
+      height: 100%;
+      padding: clamp(6px, .75vw, 14px);
+      object-fit: contain;
+      object-position: center;
+      transform: none;
+      transition: none;
+    }
+
+    [data-ts-mega-editorial="{{ id }}"] .ts-mega-editorial__image--primary {
+      opacity: 1;
+    }
+
+    [data-ts-mega-editorial="{{ id }}"] .ts-mega-editorial__image--hover {
+      opacity: 0;
+    }
+
+    [data-ts-mega-editorial="{{ id }}"] .ts-mega-editorial__card:hover
+      .ts-mega-editorial__image--primary {
+      opacity: 0;
+      transform: none;
+    }
+
+    [data-ts-mega-editorial="{{ id }}"] .ts-mega-editorial__card:hover
+      .ts-mega-editorial__image--hover {
+      opacity: 1;
+      transform: none;
+    }
+
+    [data-ts-mega-editorial="{{ id }}"] .ts-mega-editorial__card:hover
+      .ts-mega-editorial__media:not(:has(.ts-mega-editorial__image--hover))
+      .ts-mega-editorial__image--primary {
+      opacity: 1;
+    }
+
+    [data-ts-mega-editorial="{{ id }}"] .ts-mega-editorial__meta {
+      display: flex;
+      min-height: 86px;
+      padding: 14px 4px 0;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    [data-ts-mega-editorial="{{ id }}"] .ts-mega-editorial__logo {
+      display: block;
+      width: auto;
+      max-width: min(100%, 247px);
+      height: 43px;
+      object-fit: contain;
+      object-position: center;
+    }
+
+    [data-ts-mega-editorial="{{ id }}"] .ts-mega-editorial__title {
+      display: flex;
+      width: 100%;
+      height: 43px;
+      min-height: 43px;
+      align-items: center;
+      justify-content: center;
+      font-family: var(--font-heading-family, serif);
+      font-size: clamp(1rem, 1.15vw, 1.35rem);
+      line-height: 1.1;
+    }
+
+    [data-ts-mega-editorial="{{ id }}"] .ts-mega-editorial__subtitle {
+      margin-top: .48rem;
+      color: var(--ts-mega-muted);
+      font-size: clamp(.61rem, .59vw, .7rem);
+      line-height: 1.25;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+    }
+
+    /*
+      Fallback-Titel wie "Probenset" besitzt optisch etwas mehr Unterlänge
+      als die Bildlogos. Nur dessen Unterzeile minimal hochziehen.
+    */
+    [data-ts-mega-editorial="{{ id }}"] .ts-mega-editorial__title + .ts-mega-editorial__subtitle {
+      transform: translateY(-3px);
+    }
+
+    [data-ts-mega-editorial="{{ id }}"] .ts-mega-editorial__price {
+      margin-top: .26rem;
+      font-size: clamp(.68rem, .65vw, .76rem);
+      line-height: 1.2;
+    }
+
+    @media screen and (max-width: 1100px) and (min-width: 750px) {
+      [data-ts-mega-editorial="{{ id }}"] {
+        grid-template-columns: minmax(170px, 25%) minmax(0, 75%);
+      }
+
+      [data-ts-mega-editorial="{{ id }}"] .ts-mega-editorial__rail {
+        grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+        gap: 14px;
+      }
+
+      [data-ts-mega-editorial="{{ id }}"] .ts-mega-editorial__products {
+        padding-left: 26px;
+      }
+    }
+
+    @media screen and (max-width: 749px) {
+      /*
+        Das mobile Drawer-Menü bleibt vom Editorial Mega Menu unberührt.
+        Falls dieses Snippet dort dennoch gerendert wird, bleibt die Ausgabe
+        kompakt und ohne die Desktop-Produktbühne.
+      */
+      [data-ts-mega-editorial="{{ id }}"] {
+        display: block;
+        padding: 0;
+        background: transparent;
+        box-shadow: none;
+        clip-path: none;
+      }
+
+      [data-ts-mega-editorial="{{ id }}"] .ts-mega-editorial__nav {
+        padding: 0;
+        border: 0;
+      }
+
+      [data-ts-mega-editorial="{{ id }}"] .ts-mega-editorial__products {
+        display: none;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      [data-ts-mega-editorial="{{ id }}"] *,
+      [data-ts-mega-editorial="{{ id }}"] *::before,
+      [data-ts-mega-editorial="{{ id }}"] *::after {
+        transition-duration: .01ms !important;
+      }
+    }
+  {% endstyle %}
+
+  <script>
+    (() => {
+      /*
+        Einmalige, delegierte Hover-Verknüpfung:
+        - Menüpunkt links -> passende Karte rechts
+        - Karte rechts -> passender Menüpunkt links
+        Funktioniert auch nach Shopifys Header-Hydration weiter.
+      */
+      if (window.__tsMegaEditorialHoverBound) return;
+      window.__tsMegaEditorialHoverBound = true;
+
+      const getFocusTarget = (element) => {
+        if (!(element instanceof Element)) return null;
+        return element.closest(
+          '[data-ts-mega-editorial] [data-ts-product-handle]'
+        );
+      };
+
+      const clearFocus = (root) => {
+        if (!root) return;
+        root.classList.remove('has-product-focus');
+        root.querySelectorAll('.is-related').forEach((element) => {
+          element.classList.remove('is-related');
+        });
+      };
+
+      const applyFocus = (target) => {
+        if (!target) return;
+        const root = target.closest('[data-ts-mega-editorial]');
+        if (!root) return;
+
+        const handle = target.dataset.tsProductHandle;
+        if (!handle) return;
+
+        root.classList.add('has-product-focus');
+        root.querySelectorAll('[data-ts-product-handle]').forEach((element) => {
+          element.classList.toggle(
+            'is-related',
+            element.dataset.tsProductHandle === handle
+          );
+        });
+      };
+
+      document.addEventListener('mouseover', (event) => {
+        const target = getFocusTarget(event.target);
+        if (!target) return;
+
+        const previous = getFocusTarget(event.relatedTarget);
+        if (previous === target) return;
+
+        applyFocus(target);
+      });
+
+      document.addEventListener('mouseout', (event) => {
+        const target = getFocusTarget(event.target);
+        if (!target) return;
+
+        const next = getFocusTarget(event.relatedTarget);
+        if (next && next.closest('[data-ts-mega-editorial]') === target.closest('[data-ts-mega-editorial]')) {
+          return;
+        }
+
+        clearFocus(target.closest('[data-ts-mega-editorial]'));
+      });
+    })();
+  </script>
+{% else %}
+<ul
+  data-menu-list-id="{{ id }}"
+  class="mega-menu__list list-unstyled"
+  style="--menu-image-border-radius: {{ image_border_radius }}px;"
+>
+  {% for link in parent_link.links %}
+    {% liquid
+      # Decide whether to open a column span, and how many columns of the grid to span
+      if forloop.first or open_column_span == false
+        assign open_column_span = true
+
+        # Don't allow orphan links in a column
+        assign break_after_modulo = link.links.size | modulo: links_before_wrap
+        if break_after_modulo == 1
+          assign links_before_wrap = links_before_wrap | minus: 1
+        endif
+        assign break_after_float = links_before_wrap | times: 1.0
+        assign column_span = link.links.size | divided_by: break_after_float | ceil | at_least: 1
+        assign column_count = column_count | plus: column_span
+        assign should_break_columns = true
+        assign span_class = ''
+
+        if menu_content_type == 'collection_images'
+          assign should_break_columns = false
+          # For collection image mode, we have an 8-column grid when 4 or fewer parent links are used. Set column span to 2 in that case, otherwise use 1 column
+          if parent_link.links.size <= 4
+            assign span_class = 'mega-menu__column--wide-collection-image'
+          endif
+        else
+          # For all other modes, column span is determined by the number of links in the parent link
+          assign span_class = 'mega-menu__column--span-' | append: column_span
+        endif
+        echo '<li class="mega-menu__column ' | append: span_class | append: '">'
+      endif
+    %}
+    <div>
+      <a
+        href="{{ link.url }}"
+        class="mega-menu__link {% if link.links != blank %}mega-menu__link--parent{% endif %}"
+      >
+        {% if menu_content_type == 'collection_images' %}
+          {%- capture collection_image_sizes -%}
+            {%- if parent_link.links.size <= 4 -%}
+              {%- assign columns_per_item = 2 -%}
+            {%- else -%}
+              {%- assign columns_per_item = 1 -%}
+            {%- endif -%}
+            {%- render 'util-mega-menu-img-sizes-attr',
+              menu_content_type: 'collection_images',
+              settings: settings,
+              grid_columns: grid_columns_count,
+              grid_columns_tablet: grid_columns_count_tablet,
+              grid_columns_collection_images: grid_columns_count_collection_images,
+              parent_links_size: parent_link.links.size,
+              columns_per_item: columns_per_item
+            -%}
+          {%- endcapture -%}
+
+          {% render 'link-featured-image', link: link, class: 'mega-menu__link-image', sizes: collection_image_sizes %}
+        {% endif %}
+        <span class="wrap-text">
+          {{- link.title -}}
+        </span>
+      </a>
+      {% if link.links != blank %}
+        <ul
+          class="list-unstyled"
+          {% if should_break_columns %}
+            style="column-count: {{ column_span }};"
+          {% endif %}
+        >
+          {% for childLink in link.links %}
+            {% assign break_after_modulo = forloop.index | modulo: links_before_wrap %}
+            <li
+              {% if break_after_modulo == 0 and should_break_columns %}
+                style="break-after: column;"
+              {% endif %}
+            >
+              <a
+                href="{{ childLink.url }}"
+                class="mega-menu__link"
+              >
+                <span class="wrap-text">{{- childLink.title -}}</span>
+              </a>
+            </li>
+          {% endfor %}
+        </ul>
+      {% endif %}
+    </div>
+
+    {% liquid
+      # Check conditions for closing the span at the end of each iteration, then close the span if needed
+      assign next_linklist = parent_link.links[forloop.index]
+
+      if forloop.last
+        assign open_column_span = false
+      elsif menu_content_type == 'collection_images'
+        assign open_column_span = false
+      elsif next_linklist.links != blank
+        assign open_column_span = false
+      elsif link.links != blank and next_linklist.links == blank
+        assign open_column_span = false
+      endif
+
+      if open_column_span == false
+        echo '</li>'
+      endif
+    %}
+  {% endfor %}
+</ul>
+
+{% liquid
+  # decide how many grid columns are needed for the menu list, and how many columns are needed for the featured content
+  # prioritize a minimum of 1 featured_collection (2 columns), and minimum 2 featured_products (2 columns)
+  assign min_products = 2
+  assign max_products = 3
+  assign min_products_tablet = 1
+  assign max_products_tablet = 3
+  assign min_collections = 1
+
+  if menu_content_type == 'featured_products'
+    # desktop breakpoint
+    assign temp_column_count = column_count | plus: min_products
+
+    if temp_column_count > max_menu_columns
+      assign max_product_columns = 2
+    else
+      assign max_product_columns = max_menu_columns | minus: column_count | at_most: max_products
+    endif
+
+    if eager_loading
+      assign max_product_columns = max_product_columns | at_most: collection_object.products_count
+    else
+      assign max_product_columns = 0
+    endif
+
+    assign max_featured_products = max_product_columns
+    assign max_menu_columns = max_menu_columns | minus: max_product_columns
+
+    # tablet breakpoint
+    assign temp_column_count = column_count | plus: min_products_tablet
+
+    if temp_column_count > max_menu_columns_tablet
+      assign max_product_columns_tablet = 1
+    else
+      assign max_product_columns_tablet = max_menu_columns_tablet | minus: column_count | at_most: max_products_tablet
+    endif
+
+    assign max_product_columns_tablet = max_product_columns_tablet | at_most: max_product_columns
+
+    assign max_featured_products_tablet = max_product_columns_tablet
+    assign max_menu_columns_tablet = max_menu_columns_tablet | minus: max_product_columns_tablet
+  endif
+
+  if menu_content_type == 'featured_collections'
+    # desktop breakpoint
+    assign min_featured_collection_columns = min_collections | times: 2
+    assign temp_column_count = column_count | plus: min_featured_collection_columns
+
+    if temp_column_count > max_menu_columns
+      assign max_collection_columns = 2
+    else
+      assign max_collection_columns = max_menu_columns | minus: column_count
+    endif
+
+    assign max_featured_collections = max_collection_columns | divided_by: 2 | floor
+    assign max_menu_columns = max_menu_columns | minus: max_collection_columns
+
+    # tablet breakpoint
+    assign max_collection_columns_tablet = 2
+    assign max_featured_collections_tablet = 1
+    assign max_menu_columns_tablet = max_menu_columns_tablet | minus: max_collection_columns_tablet
+  endif
+%}
+
+{% style %}
+  [data-menu-grid-id="{{ id }}"] {
+    {% if menu_content_type == 'collection_images' and parent_link.links.size < 5 %}
+      --menu-columns-desktop: {{ grid_columns_count_collection_images }};
+      --menu-columns-tablet: {{ grid_columns_count_tablet }};
+    {% else %}
+      --menu-columns-desktop: {{ grid_columns_count }};
+      --menu-columns-tablet: {{ grid_columns_count_tablet }};
+    {% endif %}
+  }
+
+  [data-menu-list-id="{{ id }}"] {
+    {% if menu_content_type == 'collection_images' and parent_link.links.size < 5 %}
+      --menu-columns-desktop: {{ grid_columns_count_collection_images }};
+      --menu-columns-tablet: {{ max_menu_columns_tablet }};
+    {% else %}
+      --menu-columns-desktop: {{ max_menu_columns }};
+      --menu-columns-tablet: {{ max_menu_columns_tablet }};
+    {% endif %}
+  }
+{% endstyle %}
+
+{% case menu_content_type %}
+  {% when 'featured_products' %}
+    {%- capture image_sizes -%}
+      {%- render 'util-mega-menu-img-sizes-attr',
+        menu_content_type: 'featured_products',
+        settings: settings,
+        grid_columns: grid_columns_count,
+        grid_columns_tablet: grid_columns_count_tablet
+      -%}
+    {%- endcapture -%}
+
+    <span
+      class="mega-menu__content"
+      style="--menu-content-columns-desktop: {{ max_product_columns }}; --menu-content-columns-tablet: {{ max_product_columns_tablet }}; --resource-card-corner-radius: {{ image_border_radius }}px;"
+    >
+      <ul
+        class="mega-menu__content-list mega-menu__content-list--products list-unstyled"
+      >
+        {% if eager_loading %}
+          {% paginate collection_object.products by max_featured_products %}
+            {% for item in collection_object.products %}
+              <li class="mega-menu__content-list-item {% if forloop.index > max_featured_products_tablet %} mega-menu__content-list-item--hidden-tablet{% endif %}">
+                {% render 'resource-card',
+                  resource: item,
+                  resource_type: 'product',
+                  image_hover: true,
+                  image_aspect_ratio: content_aspect_ratio,
+                  image_sizes: image_sizes,
+                  product_view_context: 'dialog'
+                %}
+              </li>
+            {% endfor %}
+          {% endpaginate %}
+        {% endif %}
+      </ul>
+    </span>
+  {% when 'featured_collections' %}
+    {% assign collection_handles = collection_handles | split: ',' | uniq %}
+    {%- capture image_sizes -%}
+      {%- render 'util-mega-menu-img-sizes-attr',
+        menu_content_type: 'featured_collections',
+        settings: settings
+      -%}
+    {%- endcapture -%}
+
+    {% if collection_handles.size == 1 %}
+      {% assign max_featured_collections = 1 %}
+    {% endif %}
+
+    <span
+      class="mega-menu__content"
+      style="--menu-content-columns-desktop: {{ max_collection_columns }}; --menu-content-columns-tablet: {{ max_collection_columns_tablet }}; --resource-card-corner-radius: {{ image_border_radius }}px;"
+    >
+      <ul
+        class="mega-menu__content-list mega-menu__content-list--collections list-unstyled"
+        style="--menu-content-columns-desktop: {{ max_featured_collections }}; --menu-content-columns-tablet: {{ max_featured_collections_tablet }};"
+      >
+        {% for handle in collection_handles limit: max_featured_collections %}
+          {% if handle == 'all' %}
+            {% assign collection_object = collections.all %}
+          {% else %}
+            {% assign collection_object = collections[handle] %}
+          {% endif %}
+          <li class="mega-menu__content-list-item{% if forloop.index > max_featured_collections_tablet %} mega-menu__content-list-item--hidden-tablet{% endif %}">
+            {% render 'resource-card',
+              resource: collection_object,
+              resource_type: 'collection',
+              style: 'overlay',
+              image_aspect_ratio: content_aspect_ratio,
+              image_sizes: image_sizes
+            %}
+          </li>
+        {% endfor %}
+      </ul>
+    </span>
+{% endcase %}
+
+{% endif %}

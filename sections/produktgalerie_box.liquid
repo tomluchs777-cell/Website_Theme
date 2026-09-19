@@ -1,0 +1,1912 @@
+{% comment %}
+  TOM SCHILLER – Produktseite 50/50 Editorial
+
+  Bestehendes Produkt-Metafeld:
+    custom.parfumname_schwarz
+
+  Neue optionale Produkt-Metafelder für das Buybox-Logo:
+    custom.buybox_logo_groesse      -> Ganze Zahl, Prozent
+    custom.buybox_logo_horizontal   -> Ganze Zahl, px
+    custom.buybox_logo_vertikal     -> Ganze Zahl, px
+
+  Empfohlene neue Produkt-Metafelder:
+    custom.charakter_keywords  -> Liste Einzeiliger Text
+    custom.anlass              -> Liste Einzeiliger Text
+    custom.jahreszeit          -> Liste Einzeiliger Text
+    custom.duftreise           -> Mehrzeiliger Text
+    custom.inhaltsstoffe       -> Rich Text / Mehrzeiliger Text / Textliste
+
+  Desktop:
+    - linke Hälfte: vertikal gestapelte Produktmedien, jedes Bild viewporthoch
+    - rechte Hälfte: sticky bis zum Ende der linken Galerie
+    - exakt 50 / 50
+
+  Mobile:
+    - Galerie horizontal swipebar
+    - Buybox darunter, nicht sticky
+{% endcomment %}
+
+{% liquid
+  assign ts_variant = product.selected_or_first_available_variant
+  assign ts_product_form_id = 'TSProductEditorialForm-' | append: section.id
+
+  assign ts_logo_value = product.metafields.custom.parfumname_schwarz.value
+  assign ts_logo = ts_logo_value.preview_image | default: ts_logo_value
+
+  assign ts_logo_size = product.metafields.custom.buybox_logo_groesse.value | default: section.settings.logo_width
+  assign ts_logo_x = product.metafields.custom.buybox_logo_horizontal.value | default: 0
+  assign ts_logo_y = product.metafields.custom.buybox_logo_vertikal.value | default: 0
+
+  assign ts_keywords = product.metafields.custom.charakter_keywords.value
+  assign ts_occasion = product.metafields.custom.anlass.value
+  assign ts_season = product.metafields.custom.jahreszeit.value
+  assign ts_journey = product.metafields.custom.duftreise.value
+  assign ts_ingredients_metafield = product.metafields.custom.inhaltsstoffe
+  assign ts_ingredients = ts_ingredients_metafield.value
+
+  assign ts_sample_set_product = section.settings.sample_set_product
+  assign ts_is_sample_set = false
+  if ts_sample_set_product != blank and product.id == ts_sample_set_product.id
+    assign ts_is_sample_set = true
+  endif
+
+  assign ts_sample_product_1 = section.settings.sample_product_1
+  assign ts_sample_product_2 = section.settings.sample_product_2
+  assign ts_sample_product_3 = section.settings.sample_product_3
+%}
+
+<section
+  id="TSProductEditorial-{{ section.id }}"
+  class="ts-product-editorial{% if ts_is_sample_set %} ts-product-editorial--sample-set{% endif %}"
+  style="
+    --ts-pe-bg: {{ section.settings.background_color }};
+    --ts-pe-text: {{ section.settings.text_color }};
+    --ts-pe-muted: {{ section.settings.muted_color }};
+    --ts-pe-button-bg: {{ section.settings.button_background }};
+    --ts-pe-button-text: {{ section.settings.button_text_color }};
+    --ts-pe-header-height: {{ section.settings.header_height_fallback }}px;
+    --ts-pe-panel-height: calc(100svh - var(--ts-pe-header-height));
+    --ts-pe-logo-size: {{ ts_logo_size }}%;
+    --ts-pe-logo-x: {{ ts_logo_x }}px;
+    --ts-pe-logo-y: {{ ts_logo_y }}px;
+    --ts-pe-logo-optical-x: -6%;
+  "
+>
+  <div class="ts-product-editorial__layout">
+
+    <div class="ts-product-editorial__gallery" data-ts-gallery>
+      {% if product.media.size > 0 %}
+        {% for media in product.media %}
+          <div
+            class="ts-product-editorial__media"
+            data-ts-media
+            data-index="{{ forloop.index0 }}"
+          >
+            {% case media.media_type %}
+              {% when 'image' %}
+                {{
+                  media.preview_image
+                  | image_url: width: 2200
+                  | image_tag:
+                    class: 'ts-product-editorial__image',
+                    widths: '640, 900, 1200, 1500, 1800, 2200',
+                    sizes: '(max-width: 989px) 100vw, 50vw',
+                    loading: 'eager',
+                    alt: media.alt | default: product.title
+                }}
+
+              {% when 'video' %}
+                {{
+                  media
+                  | media_tag:
+                    class: 'ts-product-editorial__video',
+                    image_size: '1600x',
+                    autoplay: false,
+                    loop: true,
+                    controls: true,
+                    preload: 'metadata'
+                }}
+
+              {% when 'external_video' %}
+                {{
+                  media
+                  | external_video_tag:
+                    class: 'ts-product-editorial__video'
+                }}
+
+              {% when 'model' %}
+                {{
+                  media
+                  | model_viewer_tag:
+                    class: 'ts-product-editorial__model',
+                    reveal: 'interaction',
+                    toggleable: true
+                }}
+
+              {% else %}
+                {{
+                  media
+                  | media_tag:
+                    class: 'ts-product-editorial__generic'
+                }}
+            {% endcase %}
+          </div>
+        {% endfor %}
+      {% else %}
+        <div class="ts-product-editorial__media">
+          {{ 'product-1' | placeholder_svg_tag: 'ts-product-editorial__placeholder' }}
+        </div>
+      {% endif %}
+
+    </div>
+
+    {% if product.media.size > 1 %}
+      <div class="ts-product-editorial__mobile-dots" aria-label="Produktbilder">
+        {% for media in product.media %}
+          <button
+            type="button"
+            class="ts-product-editorial__dot{% if forloop.first %} is-active{% endif %}"
+            data-ts-dot="{{ forloop.index0 }}"
+            aria-label="Produktbild {{ forloop.index }} anzeigen"
+            aria-current="{% if forloop.first %}true{% else %}false{% endif %}"
+          ></button>
+        {% endfor %}
+      </div>
+    {% endif %}
+
+    <aside class="ts-product-editorial__right">
+      <div class="ts-product-editorial__panel">
+
+        <div class="ts-product-editorial__top">
+          {% if ts_logo != blank %}
+            {{
+              ts_logo
+              | image_url: width: 1000
+              | image_tag:
+                class: 'ts-product-editorial__logo',
+                widths: '260, 420, 600, 800, 1000',
+                sizes: '(max-width: 989px) 65vw, 26vw',
+                loading: 'eager',
+                alt: product.title
+            }}
+          {% else %}
+            <h1 class="ts-product-editorial__product-title">{{ product.title }}</h1>
+          {% endif %}
+
+          {% if ts_is_sample_set %}
+            {% if section.settings.sample_set_subline != blank %}
+              <div class="ts-product-editorial__keywords">
+                {{ section.settings.sample_set_subline }}
+              </div>
+            {% endif %}
+          {% elsif ts_keywords != blank %}
+            <div class="ts-product-editorial__keywords">
+              {% for keyword in ts_keywords %}
+                <span>{{ keyword }}</span>
+                {% unless forloop.last %}
+                  <span class="ts-product-editorial__keyword-sep" aria-hidden="true">·</span>
+                {% endunless %}
+              {% endfor %}
+            </div>
+          {% elsif section.settings.fallback_keywords != blank %}
+            <div class="ts-product-editorial__keywords">
+              {{ section.settings.fallback_keywords }}
+            </div>
+          {% endif %}
+
+          <div class="ts-product-editorial__purchase">
+            <div class="ts-product-editorial__purchase-copy">
+              <div class="ts-product-editorial__type">
+                {{ section.settings.product_type }}
+
+                {% if ts_is_sample_set %}
+                  {% if section.settings.sample_set_volume != blank %}
+                    <span class="ts-product-editorial__type-separator">–</span>
+                    {{ section.settings.sample_set_volume }}
+                  {% endif %}
+                {% elsif section.settings.volume != blank %}
+                  <span class="ts-product-editorial__type-separator">–</span>
+                  {{ section.settings.volume }}
+                {% endif %}
+              </div>
+
+              <div class="ts-product-editorial__price">
+                {{ ts_variant.price | money }}
+              </div>
+            </div>
+
+            {% form 'product', product, id: ts_product_form_id, class: 'ts-product-editorial__form' %}
+              <input type="hidden" name="id" value="{{ ts_variant.id }}">
+              <input type="hidden" name="quantity" value="1">
+
+              <button
+                class="ts-product-editorial__add"
+                type="submit"
+                name="add"
+                {% unless ts_variant.available %}disabled{% endunless %}
+              >
+                {% if ts_variant.available %}
+                  {{ section.settings.add_to_cart_text }}
+                {% else %}
+                  {{ section.settings.sold_out_text }}
+                {% endif %}
+              </button>
+            {% endform %}
+          </div>
+
+        </div>
+
+        <div class="ts-product-editorial__story">
+          {% if ts_is_sample_set %}
+            <div class="ts-product-editorial__sample-cards">
+              {% for ts_sample_i in (1..3) %}
+                {% liquid
+                  case ts_sample_i
+                    when 1
+                      assign ts_sample_product = ts_sample_product_1
+                      assign ts_sample_text = section.settings.sample_text_1
+                    when 2
+                      assign ts_sample_product = ts_sample_product_2
+                      assign ts_sample_text = section.settings.sample_text_2
+                    when 3
+                      assign ts_sample_product = ts_sample_product_3
+                      assign ts_sample_text = section.settings.sample_text_3
+                  endcase
+
+                  assign ts_sample_logo_value = blank
+                  assign ts_sample_logo = blank
+                  assign ts_sample_keywords = blank
+
+                  if ts_sample_product != blank
+                    assign ts_sample_logo_value = ts_sample_product.metafields.custom.parfumname_schwarz.value
+                    assign ts_sample_logo = ts_sample_logo_value.preview_image | default: ts_sample_logo_value
+                    assign ts_sample_keywords = ts_sample_product.metafields.custom.charakter_keywords.value
+                  endif
+                %}
+
+                {% if ts_sample_product != blank %}
+                  <a
+                    href="{{ ts_sample_product.url }}"
+                    class="ts-product-editorial__sample-card"
+                    aria-label="{{ ts_sample_product.title | escape }} entdecken"
+                  >
+                    <div class="ts-product-editorial__sample-card-head">
+                      <div class="ts-product-editorial__sample-brand">
+                        {% if ts_sample_logo != blank %}
+                          {{
+                            ts_sample_logo
+                            | image_url: width: 520
+                            | image_tag:
+                              class: 'ts-product-editorial__sample-logo',
+                              widths: '180, 260, 360, 520',
+                              sizes: '(max-width: 989px) 38vw, 13vw',
+                              loading: 'lazy',
+                              alt: ts_sample_product.title
+                          }}
+                        {% else %}
+                          <div class="ts-product-editorial__sample-name">{{ ts_sample_product.title }}</div>
+                        {% endif %}
+                      </div>
+
+                      <span class="ts-product-editorial__sample-arrow" aria-hidden="true">→</span>
+                    </div>
+
+                    {% if ts_sample_keywords != blank %}
+                      <div class="ts-product-editorial__sample-keywords">
+                        {% for keyword in ts_sample_keywords %}
+                          <span>{{ keyword }}</span>
+                          {% unless forloop.last %}
+                            <span class="ts-product-editorial__sample-keyword-sep" aria-hidden="true">·</span>
+                          {% endunless %}
+                        {% endfor %}
+                      </div>
+                    {% endif %}
+
+                    {% if ts_sample_text != blank %}
+                      <div class="ts-product-editorial__sample-text">{{ ts_sample_text }}</div>
+                    {% endif %}
+
+                    <div class="ts-product-editorial__sample-link">
+                      {{ section.settings.sample_link_text }} →
+                    </div>
+                  </a>
+                {% elsif request.design_mode %}
+                  <div class="ts-product-editorial__sample-card ts-product-editorial__sample-card--placeholder">
+                    Duft {{ ts_sample_i }} auswählen
+                  </div>
+                {% endif %}
+              {% endfor %}
+            </div>
+          {% endif %}
+
+          <div
+            class="ts-product-editorial__accordions{% if ts_is_sample_set %} ts-product-editorial__accordions--sample{% endif %}"
+            data-ts-accordions
+          >
+            {% unless ts_is_sample_set %}
+              <div class="ts-product-editorial__accordion is-open" data-ts-accordion>
+                <button
+                  type="button"
+                  class="ts-product-editorial__accordion-trigger"
+                  data-ts-accordion-trigger
+                  aria-expanded="true"
+                >
+                  <span>{{ section.settings.profile_title }}</span>
+                  <span class="ts-product-editorial__accordion-icon" aria-hidden="true"></span>
+                </button>
+
+                <div class="ts-product-editorial__accordion-panel" data-ts-accordion-panel>
+                  <div class="ts-product-editorial__accordion-inner">
+                    <div class="ts-product-editorial__accordion-content ts-product-editorial__accordion-content--profile">
+                      {% if ts_journey != blank or section.settings.fallback_journey != blank %}
+                        <div class="ts-product-editorial__journey ts-product-editorial__journey--primary">
+                          <div class="ts-product-editorial__journey-text">
+                            {% if ts_journey != blank %}
+                              {{ ts_journey | escape | newline_to_br }}
+                            {% else %}
+                              {{ section.settings.fallback_journey | escape | newline_to_br }}
+                            {% endif %}
+                          </div>
+                        </div>
+                      {% endif %}
+
+                      <div class="ts-product-editorial__traits">
+                        <div class="ts-product-editorial__trait ts-product-editorial__trait--left">
+                          <div class="ts-product-editorial__trait-label">Anlass</div>
+                          <div class="ts-product-editorial__trait-values">
+                            {% if ts_occasion != blank %}
+                              {% for item in ts_occasion %}
+                                <span class="ts-product-editorial__trait-value">{{ item }}</span>
+                                {% unless forloop.last %}
+                                  <span class="ts-product-editorial__trait-separator" aria-hidden="true">·</span>
+                                {% endunless %}
+                              {% endfor %}
+                            {% else %}
+                              <span>{{ section.settings.fallback_occasion }}</span>
+                            {% endif %}
+                          </div>
+                        </div>
+
+                        <div class="ts-product-editorial__trait ts-product-editorial__trait--right">
+                          <div class="ts-product-editorial__trait-label">Jahreszeit</div>
+                          <div class="ts-product-editorial__trait-values">
+                            {% if ts_season != blank %}
+                              {% for item in ts_season %}
+                                <span class="ts-product-editorial__trait-value">{{ item }}</span>
+                                {% unless forloop.last %}
+                                  <span class="ts-product-editorial__trait-separator" aria-hidden="true">·</span>
+                                {% endunless %}
+                              {% endfor %}
+                            {% else %}
+                              <span>{{ section.settings.fallback_season }}</span>
+                            {% endif %}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            {% endunless %}
+
+            <div class="ts-product-editorial__accordion" data-ts-accordion>
+              <button
+                type="button"
+                class="ts-product-editorial__accordion-trigger"
+                data-ts-accordion-trigger
+                aria-expanded="false"
+              >
+                <span>{{ section.settings.safety_title }}</span>
+                <span class="ts-product-editorial__accordion-icon" aria-hidden="true"></span>
+              </button>
+
+              <div class="ts-product-editorial__accordion-panel" data-ts-accordion-panel>
+                <div class="ts-product-editorial__accordion-inner">
+                  <div class="ts-product-editorial__accordion-content">
+                    <div class="ts-product-editorial__accordion-subsection">
+                      <div class="ts-product-editorial__accordion-subtitle">
+                        {{ section.settings.safety_subtitle }}
+                      </div>
+                      <div class="ts-product-editorial__accordion-copy rte">
+                        {{ section.settings.safety_content }}
+                      </div>
+                    </div>
+
+                    <div class="ts-product-editorial__accordion-subsection">
+                      <div class="ts-product-editorial__accordion-subtitle">
+                        {{ section.settings.ingredients_subtitle }}
+                      </div>
+
+                      <div class="ts-product-editorial__accordion-copy rte">
+                        {% if ts_ingredients_metafield != blank %}
+                          {% if ts_ingredients_metafield.type == 'rich_text_field' %}
+                            {{ ts_ingredients_metafield | metafield_tag }}
+                          {% elsif ts_ingredients_metafield.type contains 'list.' %}
+                            <p>
+                              {% for ingredient in ts_ingredients %}
+                                {{ ingredient }}{% unless forloop.last %} · {% endunless %}
+                              {% endfor %}
+                            </p>
+                          {% else %}
+                            <p>{{ ts_ingredients | escape | newline_to_br }}</p>
+                          {% endif %}
+                        {% elsif section.settings.ingredients_fallback != blank %}
+                          <p>{{ section.settings.ingredients_fallback | escape | newline_to_br }}</p>
+                        {% endif %}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="ts-product-editorial__accordion" data-ts-accordion>
+              <button
+                type="button"
+                class="ts-product-editorial__accordion-trigger"
+                data-ts-accordion-trigger
+                aria-expanded="false"
+              >
+                <span>{{ section.settings.shipping_title }}</span>
+                <span class="ts-product-editorial__accordion-icon" aria-hidden="true"></span>
+              </button>
+
+              <div class="ts-product-editorial__accordion-panel" data-ts-accordion-panel>
+                <div class="ts-product-editorial__accordion-inner">
+                  <div class="ts-product-editorial__accordion-content rte">
+                    {{ section.settings.shipping_content }}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </aside>
+
+  </div>
+</section>
+
+{% style %}
+  #TSProductEditorial-{{ section.id }} {
+    position: relative;
+    width: 100vw;
+    max-width: none;
+    margin-right: calc(50% - 50vw);
+    margin-left: calc(50% - 50vw);
+    color: var(--ts-pe-text);
+    background: var(--ts-pe-bg);
+  }
+
+  @supports (width: 100dvw) {
+    #TSProductEditorial-{{ section.id }} {
+      width: 100dvw;
+      margin-right: calc(50% - 50dvw);
+      margin-left: calc(50% - 50dvw);
+    }
+  }
+
+  #TSProductEditorial-{{ section.id }} * {
+    box-sizing: border-box;
+  }
+
+  #TSProductEditorial-{{ section.id }} .ts-product-editorial__layout {
+    display: grid;
+    grid-template-columns: 50% 50%;
+    width: 100%;
+    max-width: none;
+    align-items: start;
+  }
+
+  /* =========================
+     LINKE GALERIE – DESKTOP
+     ========================= */
+
+  #TSProductEditorial-{{ section.id }} .ts-product-editorial__gallery {
+    position: relative;
+    width: 100%;
+    min-width: 0;
+  }
+
+  #TSProductEditorial-{{ section.id }} .ts-product-editorial__media {
+    position: relative;
+    width: 100%;
+    height: var(--ts-pe-panel-height);
+    min-height: 0;
+    overflow: hidden;
+    background: #fff;
+  }
+
+  @supports (height: 100dvh) {
+    #TSProductEditorial-{{ section.id }} {
+      --ts-pe-panel-height: calc(100dvh - var(--ts-pe-header-height));
+    }
+  }
+
+  #TSProductEditorial-{{ section.id }} .ts-product-editorial__image,
+  #TSProductEditorial-{{ section.id }} .ts-product-editorial__video,
+  #TSProductEditorial-{{ section.id }} .ts-product-editorial__model,
+  #TSProductEditorial-{{ section.id }} .ts-product-editorial__generic {
+    display: block;
+    width: 100%;
+    height: 100%;
+  }
+
+  #TSProductEditorial-{{ section.id }} .ts-product-editorial__image {
+    object-fit: {{ section.settings.image_fit }};
+    object-position: center center;
+  }
+
+  #TSProductEditorial-{{ section.id }} .ts-product-editorial__video,
+  #TSProductEditorial-{{ section.id }} .ts-product-editorial__model {
+    object-fit: cover;
+  }
+
+  #TSProductEditorial-{{ section.id }} .ts-product-editorial__placeholder {
+    width: 100%;
+    height: 100%;
+    opacity: .14;
+  }
+
+  /* =========================
+     RECHTE HÄLFTE – STICKY
+     Kein eigener Scrollcontainer:
+     Wheel/Trackpad scrollt immer die Seite und damit die Galerie links.
+     ========================= */
+
+  #TSProductEditorial-{{ section.id }} .ts-product-editorial__right {
+    position: sticky;
+    top: var(--ts-pe-header-height);
+    width: 100%;
+    height: var(--ts-pe-panel-height);
+    min-height: 0;
+    overflow: hidden;
+    background: var(--ts-pe-bg);
+  }
+
+  #TSProductEditorial-{{ section.id }} .ts-product-editorial__panel {
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    padding:
+      {{ section.settings.panel_padding_top | times: 0.3 }}px
+      {{ section.settings.panel_padding_horizontal }}px
+      {{ section.settings.panel_padding_bottom }}px;
+  }
+
+  #TSProductEditorial-{{ section.id }} .ts-product-editorial__top,
+  #TSProductEditorial-{{ section.id }} .ts-product-editorial__story {
+    width: 100%;
+  }
+
+  /* =========================
+     BUYBOX
+     ========================= */
+
+  #TSProductEditorial-{{ section.id }} .ts-product-editorial__logo {
+    display: block;
+    width: var(--ts-pe-logo-size);
+    max-width: 100%;
+    height: auto;
+    object-fit: contain;
+    object-position: left center;
+    transform:
+      translate(
+        calc(var(--ts-pe-logo-optical-x) + var(--ts-pe-logo-x)),
+        var(--ts-pe-logo-y)
+      );
+    transform-origin: left top;
+  }
+
+  #TSProductEditorial-{{ section.id }} .ts-product-editorial__product-title {
+    margin: 0;
+    font-family: var(--font-heading-family, serif);
+    font-size: clamp(2.7rem, 4vw, 5rem);
+    font-weight: 400;
+    line-height: .95;
+  }
+
+  #TSProductEditorial-{{ section.id }} .ts-product-editorial__keywords {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .12rem .42rem;
+    margin-top: .225rem;
+    color: var(--ts-pe-muted);
+    font-size: clamp(.78rem, .82vw, .92rem);
+    letter-spacing: .035em;
+    line-height: 1.35;
+  }
+
+  #TSProductEditorial-{{ section.id }} .ts-product-editorial__keyword-sep {
+    opacity: .45;
+  }
+
+  #TSProductEditorial-{{ section.id }} .ts-product-editorial__purchase {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(170px, 40%);
+    gap: 1rem;
+    align-items: stretch;
+    margin-top: 1rem;
+  }
+
+  #TSProductEditorial-{{ section.id }} .ts-product-editorial__purchase-copy {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    justify-content: center;
+    gap: .55rem;
+  }
+
+  #TSProductEditorial-{{ section.id }} .ts-product-editorial__type {
+    font-size: clamp(.82rem, .88vw, .95rem);
+    font-weight: 500;
+    letter-spacing: .035em;
+    text-transform: uppercase;
+  }
+
+  #TSProductEditorial-{{ section.id }} .ts-product-editorial__type-separator {
+    margin: 0 .22rem;
+    opacity: .5;
+  }
+
+  #TSProductEditorial-{{ section.id }} .ts-product-editorial__price {
+    font-size: clamp(1.16rem, 1.2vw, 1.4rem);
+    font-weight: 700;
+    line-height: 1;
+  }
+
+  #TSProductEditorial-{{ section.id }} .ts-product-editorial__form {
+    display: flex;
+    width: 100%;
+  }
+
+  #TSProductEditorial-{{ section.id }} .ts-product-editorial__add {
+    width: 100%;
+    min-height: 64px;
+    padding: .8rem 1rem;
+    color: var(--ts-pe-button-text);
+    border: 1px solid var(--ts-pe-button-bg);
+    border-radius: {{ section.settings.button_radius }}px;
+    background: var(--ts-pe-button-bg);
+    font: inherit;
+    font-size: .92rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition:
+      transform 180ms ease,
+      opacity 180ms ease;
+  }
+
+  #TSProductEditorial-{{ section.id }} .ts-product-editorial__add:hover:not(:disabled) {
+    transform: translateY(-1px);
+  }
+
+  #TSProductEditorial-{{ section.id }} .ts-product-editorial__add:disabled {
+    cursor: not-allowed;
+    opacity: .55;
+  }
+
+  /* =========================
+     PROBENSET
+     ========================= */
+
+  #TSProductEditorial-{{ section.id }} .ts-product-editorial__sample-cards {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: .7rem;
+    width: 100%;
+    margin-top: 0;
+  }
+
+  #TSProductEditorial-{{ section.id }} .ts-product-editorial__sample-card {
+    display: block;
+    width: 100%;
+    padding: .95rem 1rem;
+    color: var(--ts-pe-text);
+    border: 1px solid color-mix(in srgb, var(--ts-pe-text) 16%, transparent);
+    border-radius: 14px;
+    background: color-mix(in srgb, var(--ts-pe-bg) 96%, var(--ts-pe-text) 4%);
+    text-decoration: none;
+    transition:
+      transform 260ms cubic-bezier(.22, .72, .18, 1),
+      background-color 260ms ease,
+      border-color 260ms ease;
+  }
+
+  #TSProductEditorial-{{ section.id }} .ts-product-editorial__sample-card:hover {
+    transform: translateY(-2px);
+    border-color: color-mix(in srgb, var(--ts-pe-text) 28%, transparent);
+    background: color-mix(in srgb, var(--ts-pe-bg) 92%, var(--ts-pe-text) 8%);
+  }
+
+  #TSProductEditorial-{{ section.id }} .ts-product-editorial__sample-card-head {
+    display: flex;
+    min-height: 66px;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+  }
+
+  #TSProductEditorial-{{ section.id }} .ts-product-editorial__sample-logo {
+    display: block;
+    width: auto;
+    max-width: 330px;
+    height: 64px;
+    object-fit: contain;
+    object-position: left center;
+  }
+
+  #TSProductEditorial-{{ section.id }} .ts-product-editorial__sample-name {
+    font-family: var(--font-heading-family, serif);
+    font-size: 1.3rem;
+  }
+
+  #TSProductEditorial-{{ section.id }} .ts-product-editorial__sample-arrow {
+    flex: 0 0 auto;
+    transition: transform 260ms cubic-bezier(.22, .72, .18, 1);
+  }
+
+  #TSProductEditorial-{{ section.id }} .ts-product-editorial__sample-card:hover .ts-product-editorial__sample-arrow {
+    transform: translateX(5px);
+  }
+
+  #TSProductEditorial-{{ section.id }} .ts-product-editorial__sample-keywords {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .12rem .36rem;
+    margin-top: .42rem;
+    color: var(--ts-pe-muted);
+    font-size: clamp(.68rem, .72vw, .8rem);
+    line-height: 1.3;
+  }
+
+  #TSProductEditorial-{{ section.id }} .ts-product-editorial__sample-keyword-sep {
+    opacity: .55;
+  }
+
+  #TSProductEditorial-{{ section.id }} .ts-product-editorial__sample-text {
+    margin-top: .45rem;
+    font-size: clamp(.72rem, .76vw, .84rem);
+    line-height: 1.42;
+  }
+
+  #TSProductEditorial-{{ section.id }} .ts-product-editorial__sample-link {
+    margin-top: .55rem;
+    font-size: .65rem;
+    font-weight: 600;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+  }
+
+  #TSProductEditorial-{{ section.id }} .ts-product-editorial__sample-card--placeholder {
+    color: var(--ts-pe-muted);
+    font-size: .8rem;
+  }
+
+  /* =========================
+     PROBENSET – KOMPAKT DESKTOP
+     Drei Düfte nebeneinander, alles innerhalb der sichtbaren rechten Hälfte.
+     Mobile bleibt weiter untereinander.
+     ========================= */
+
+
+  #TSProductEditorial-{{ section.id }}.ts-product-editorial--sample-set
+    .ts-product-editorial__sample-arrow {
+    display: none;
+  }
+
+  @media screen and (min-width: 990px) {
+    #TSProductEditorial-{{ section.id }}.ts-product-editorial--sample-set
+      .ts-product-editorial__panel {
+      padding-top: max(8px, {{ section.settings.panel_padding_top | times: 0.22 }}px);
+      padding-bottom: max(14px, {{ section.settings.panel_padding_bottom | times: 0.55 }}px);
+    }
+
+    #TSProductEditorial-{{ section.id }}.ts-product-editorial--sample-set
+      .ts-product-editorial__story {
+      margin-top: 1.35rem;
+    }
+
+    #TSProductEditorial-{{ section.id }}.ts-product-editorial--sample-set
+      .ts-product-editorial__sample-cards {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: .72rem;
+      align-items: stretch;
+    }
+
+    #TSProductEditorial-{{ section.id }}.ts-product-editorial--sample-set
+      .ts-product-editorial__sample-card {
+      display: flex;
+      min-width: 0;
+      min-height: 218px;
+      padding: .9rem .9rem .85rem;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+    }
+
+    #TSProductEditorial-{{ section.id }}.ts-product-editorial--sample-set
+      .ts-product-editorial__sample-card-head {
+      width: 100%;
+      min-height: 72px;
+      align-items: center;
+      justify-content: center;
+      gap: .45rem;
+    }
+
+    #TSProductEditorial-{{ section.id }}.ts-product-editorial--sample-set
+      .ts-product-editorial__sample-brand {
+      min-width: 0;
+      flex: 0 1 auto;
+      display: flex;
+      justify-content: center;
+      width: 100%;
+    }
+
+    #TSProductEditorial-{{ section.id }}.ts-product-editorial--sample-set
+      .ts-product-editorial__sample-logo {
+      width: auto;
+      max-width: 100%;
+      height: 68px;
+      object-position: center center;
+    }
+
+    #TSProductEditorial-{{ section.id }}.ts-product-editorial--sample-set
+      .ts-product-editorial__sample-arrow {
+      display: none;
+    }
+
+    #TSProductEditorial-{{ section.id }}.ts-product-editorial--sample-set
+      .ts-product-editorial__sample-keywords {
+      width: 100%;
+      justify-content: center;
+      gap: .08rem .28rem;
+      margin-top: .42rem;
+      font-size: clamp(.73rem, .74vw, .86rem);
+      line-height: 1.3;
+      text-align: center;
+    }
+
+    #TSProductEditorial-{{ section.id }}.ts-product-editorial--sample-set
+      .ts-product-editorial__sample-text {
+      width: 100%;
+      margin-top: .48rem;
+      font-size: clamp(.67rem, .68vw, .77rem);
+      line-height: 1.4;
+      text-align: center;
+    }
+
+    #TSProductEditorial-{{ section.id }}.ts-product-editorial--sample-set
+      .ts-product-editorial__sample-link {
+      align-self: center;
+      margin-top: auto;
+      padding-top: .65rem;
+      font-size: .61rem;
+      text-align: center;
+    }
+
+    #TSProductEditorial-{{ section.id }}.ts-product-editorial--sample-set
+      .ts-product-editorial__accordions--sample {
+      margin-top: 1.05rem;
+    }
+
+    #TSProductEditorial-{{ section.id }}.ts-product-editorial--sample-set
+      .ts-product-editorial__accordion-trigger {
+      min-height: 44px;
+      padding-top: .68rem;
+      padding-bottom: .68rem;
+    }
+  }
+
+  /* Bei etwas niedrigeren Desktop-Fenstern noch minimal kompakter. */
+  @media screen and (min-width: 990px) and (max-height: 820px) {
+    #TSProductEditorial-{{ section.id }}.ts-product-editorial--sample-set
+      .ts-product-editorial__story {
+      margin-top: 1rem;
+    }
+
+    #TSProductEditorial-{{ section.id }}.ts-product-editorial--sample-set
+      .ts-product-editorial__sample-card {
+      min-height: 194px;
+      padding-top: .72rem;
+      padding-bottom: .72rem;
+    }
+
+    #TSProductEditorial-{{ section.id }}.ts-product-editorial--sample-set
+      .ts-product-editorial__sample-card-head {
+      min-height: 62px;
+    }
+
+    #TSProductEditorial-{{ section.id }}.ts-product-editorial--sample-set
+      .ts-product-editorial__sample-logo {
+      height: 60px;
+    }
+
+    #TSProductEditorial-{{ section.id }}.ts-product-editorial--sample-set
+      .ts-product-editorial__accordions--sample {
+      margin-top: .75rem;
+    }
+  }
+
+  /* =========================
+     DUFTREISE
+     ========================= */
+
+  #TSProductEditorial-{{ section.id }} .ts-product-editorial__story {
+    margin-top: 2.35rem;
+  }
+
+  #TSProductEditorial-{{ section.id }} .ts-product-editorial__journey--primary {
+    margin-top: 0;
+  }
+
+  #TSProductEditorial-{{ section.id }} .ts-product-editorial__journey-label,
+  #TSProductEditorial-{{ section.id }} .ts-product-editorial__trait-label,
+  #TSProductEditorial-{{ section.id }} .ts-product-editorial__accordion-subtitle {
+    color: var(--ts-pe-text);
+    font-family: var(--font-body-family, inherit);
+    font-size: .66rem;
+    font-weight: 600;
+    line-height: 1.25;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+  }
+
+  #TSProductEditorial-{{ section.id }} .ts-product-editorial__journey-text {
+    max-width: 98%;
+    margin-top: .42rem;
+    font-family: var(--font-body-family, inherit);    font-size: clamp(.78rem, .82vw, .9rem);
+    line-height: 1.58;  }
+
+  /* =========================
+     ANLASS / JAHRESZEIT
+     ========================= */
+
+  #TSProductEditorial-{{ section.id }} .ts-product-editorial__traits {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 2rem;
+    margin-top: 1.45rem;
+  }
+
+  #TSProductEditorial-{{ section.id }} .ts-product-editorial__trait {
+    min-width: 0;
+    padding: 0;
+  }
+
+  #TSProductEditorial-{{ section.id }} .ts-product-editorial__trait--left {
+    text-align: left;
+  }
+
+  #TSProductEditorial-{{ section.id }} .ts-product-editorial__trait--right {
+    text-align: right;
+  }
+
+  #TSProductEditorial-{{ section.id }} .ts-product-editorial__trait-values {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: .12rem .38rem;
+    margin-top: .56rem;
+    font-size: clamp(.78rem, .82vw, .9rem);
+    line-height: 1.3;  }
+
+  #TSProductEditorial-{{ section.id }} .ts-product-editorial__trait--right .ts-product-editorial__trait-values {
+    justify-content: flex-end;
+  }
+
+  #TSProductEditorial-{{ section.id }} .ts-product-editorial__trait-separator {
+    opacity: .55;
+  }
+
+  /* =========================
+     AUFKLAPPFELDER
+     ========================= */
+
+  #TSProductEditorial-{{ section.id }} .ts-product-editorial__accordions {
+    width: 100%;
+    margin-top: 0;
+  }
+
+  #TSProductEditorial-{{ section.id }} .ts-product-editorial__accordions--sample {
+    margin-top: 1.55rem;
+  }
+
+  #TSProductEditorial-{{ section.id }} .ts-product-editorial__accordion {
+    width: 100%;
+    border-top: 1px solid color-mix(in srgb, var(--ts-pe-text) 18%, transparent);
+  }
+
+  /* Keine obere Trennlinie über dem standardmäßig geöffneten Duftprofil. */
+  #TSProductEditorial-{{ section.id }} .ts-product-editorial__accordions:not(.ts-product-editorial__accordions--sample)
+    > .ts-product-editorial__accordion:first-child {
+    border-top: 0;
+  }
+
+  #TSProductEditorial-{{ section.id }} .ts-product-editorial__accordion:last-child {
+    border-bottom: 1px solid color-mix(in srgb, var(--ts-pe-text) 18%, transparent);
+  }
+
+  #TSProductEditorial-{{ section.id }} .ts-product-editorial__accordion-trigger {
+    display: flex;
+    width: 100%;
+    min-height: 50px;
+    padding: .85rem 0;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    color: var(--ts-pe-text);
+    border: 0;
+    background: transparent;
+    font-family: var(--font-body-family, inherit);
+    font-size: .66rem;
+    font-weight: 600;
+    line-height: 1.25;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    text-align: left;
+    cursor: pointer;
+  }
+
+  #TSProductEditorial-{{ section.id }} .ts-product-editorial__accordion-icon {
+    position: relative;
+    display: block;
+    flex: 0 0 18px;
+    width: 18px;
+    height: 18px;
+    min-width: 18px;
+    min-height: 18px;
+    align-self: center;
+    line-height: 0;
+  }
+
+  #TSProductEditorial-{{ section.id }} .ts-product-editorial__accordion-icon::before,
+  #TSProductEditorial-{{ section.id }} .ts-product-editorial__accordion-icon::after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    display: block;
+    margin: 0;
+    padding: 0;
+    border-radius: 999px;
+    background: currentColor;
+    transition: transform 320ms cubic-bezier(.22, .72, .18, 1), opacity 220ms ease;
+  }
+
+  #TSProductEditorial-{{ section.id }} .ts-product-editorial__accordion-icon::before {
+    width: 12px;
+    height: 1px;
+    transform: translate(-50%, -50%);
+  }
+
+  #TSProductEditorial-{{ section.id }} .ts-product-editorial__accordion-icon::after {
+    width: 1px;
+    height: 12px;
+    transform: translate(-50%, -50%) scaleY(1);
+    transform-origin: center;
+  }
+
+  #TSProductEditorial-{{ section.id }} .ts-product-editorial__accordion.is-open .ts-product-editorial__accordion-icon::after {
+    transform: translate(-50%, -50%) scaleY(0);
+    opacity: 0;
+  }
+
+  #TSProductEditorial-{{ section.id }} .ts-product-editorial__accordion-panel {
+    display: grid;
+    grid-template-rows: 0fr;
+    opacity: 0;
+    transition:
+      grid-template-rows 480ms cubic-bezier(.22, .72, .18, 1),
+      opacity 320ms ease;
+  }
+
+  #TSProductEditorial-{{ section.id }} .ts-product-editorial__accordion.is-open .ts-product-editorial__accordion-panel {
+    grid-template-rows: 1fr;
+    opacity: 1;
+  }
+
+  #TSProductEditorial-{{ section.id }} .ts-product-editorial__accordion-inner {
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  #TSProductEditorial-{{ section.id }} .ts-product-editorial__accordion-content {
+    padding: 0 0 1rem;
+    color: var(--ts-pe-muted);
+    font-family: var(--font-body-family, inherit);
+    font-size: clamp(.78rem, .82vw, .9rem);
+    line-height: 1.55;
+  }
+
+  #TSProductEditorial-{{ section.id }} .ts-product-editorial__accordion-content--profile {
+    padding-top: 0;
+    color: var(--ts-pe-text);
+  }
+
+  /*
+    Duftprofil: gleiche Trigger-Höhe im offenen und geschlossenen Zustand,
+    dadurch springt die Überschrift nicht. Der Inhalt beginnt knapp darunter.
+  */
+  #TSProductEditorial-{{ section.id }}
+    .ts-product-editorial__accordion:first-child
+    > .ts-product-editorial__accordion-trigger {
+    padding-top: .85rem;
+    padding-bottom: .42rem;
+  }
+
+  #TSProductEditorial-{{ section.id }}
+    .ts-product-editorial__accordion:first-child
+    .ts-product-editorial__accordion-content--profile {
+    padding-top: 0;
+  }
+
+  #TSProductEditorial-{{ section.id }}
+    .ts-product-editorial__accordion:first-child
+    .ts-product-editorial__journey-text {
+    margin-top: 0;
+  }
+
+  #TSProductEditorial-{{ section.id }} .ts-product-editorial__accordion-subsection + .ts-product-editorial__accordion-subsection {
+    margin-top: 1.15rem;
+  }
+
+  #TSProductEditorial-{{ section.id }} .ts-product-editorial__accordion-subtitle {
+    margin-bottom: .4rem;
+  }
+
+  #TSProductEditorial-{{ section.id }} .ts-product-editorial__accordion-copy {
+    color: var(--ts-pe-muted);
+    font: inherit;
+  }
+
+  #TSProductEditorial-{{ section.id }} .ts-product-editorial__accordion-content > *:first-child {
+    margin-top: 0;
+  }
+
+  #TSProductEditorial-{{ section.id }} .ts-product-editorial__accordion-content > *:last-child {
+    margin-bottom: 0;
+  }
+
+  #TSProductEditorial-{{ section.id }} .ts-product-editorial__mobile-dots {
+    display: none;
+  }
+
+  /* Kleinere Desktop-Höhen: Abstände kompakter halten, ohne internen Scroll. */
+  @media screen and (min-width: 990px) and (max-height: 820px) {
+    #TSProductEditorial-{{ section.id }} .ts-product-editorial__panel {
+      padding-top: max(8px, {{ section.settings.panel_padding_top | times: 0.3 }}px);
+      padding-bottom: max(16px, {{ section.settings.panel_padding_bottom | minus: 12 }}px);
+    }
+
+    #TSProductEditorial-{{ section.id }} .ts-product-editorial__story {
+      margin-top: 1.45rem;
+    }
+
+    #TSProductEditorial-{{ section.id }} .ts-product-editorial__traits {
+      margin-top: 1.25rem;
+    }
+
+    #TSProductEditorial-{{ section.id }} .ts-product-editorial__accordions {
+      margin-top: 0;
+    }
+
+    #TSProductEditorial-{{ section.id }} .ts-product-editorial__accordions--sample {
+      margin-top: 1rem;
+    }
+  }
+
+  /* =========================
+     MOBILE / TABLET
+     ========================= */
+
+  @media screen and (max-width: 989px) {
+    #TSProductEditorial-{{ section.id }} {
+      width: 100vw;
+      max-width: none;
+      margin-right: calc(50% - 50vw);
+      margin-left: calc(50% - 50vw);
+      --ts-pe-panel-height: auto;
+    }
+
+    @supports (width: 100dvw) {
+      #TSProductEditorial-{{ section.id }} {
+        width: 100dvw;
+        margin-right: calc(50% - 50dvw);
+        margin-left: calc(50% - 50dvw);
+      }
+    }
+
+    #TSProductEditorial-{{ section.id }} .ts-product-editorial__layout {
+      display: block;
+    }
+
+    #TSProductEditorial-{{ section.id }} .ts-product-editorial__gallery {
+      display: flex;
+      width: 100vw;
+      max-width: none;
+      overflow-x: auto;
+      scroll-snap-type: x mandatory;
+      scrollbar-width: none;
+      overscroll-behavior-x: contain;
+    }
+
+    #TSProductEditorial-{{ section.id }} .ts-product-editorial__gallery::-webkit-scrollbar {
+      display: none;
+    }
+
+    @supports (width: 100dvw) {
+      #TSProductEditorial-{{ section.id }} .ts-product-editorial__gallery,
+      #TSProductEditorial-{{ section.id }} .ts-product-editorial__right {
+        width: 100dvw;
+      }
+    }
+
+    #TSProductEditorial-{{ section.id }} .ts-product-editorial__media {
+      flex: 0 0 100%;
+      width: 100%;
+      height: min(112vw, 720px);
+      min-height: 0;
+      scroll-snap-align: start;
+    }
+
+    #TSProductEditorial-{{ section.id }} .ts-product-editorial__right {
+      position: static;
+      width: 100vw;
+      max-width: none;
+      height: auto;
+      min-height: 0;
+      overflow: visible;
+    }
+
+    #TSProductEditorial-{{ section.id }} .ts-product-editorial__panel {
+      height: auto;
+      overflow: visible;
+      padding:
+        {{ section.settings.mobile_padding_top }}px
+        18px
+        {{ section.settings.mobile_padding_bottom }}px;
+    }
+
+    #TSProductEditorial-{{ section.id }} .ts-product-editorial__logo {
+      width: min(var(--ts-pe-logo-size), 88%);
+      transform:
+        translate(
+          calc(3% + var(--ts-pe-logo-x)),
+          var(--ts-pe-logo-y)
+        );
+    }
+
+    /*
+      Desktop-Abstand Logo -> Keywords = .225rem.
+      Mobil gewünscht: dreifacher Abstand = .675rem.
+    */
+    #TSProductEditorial-{{ section.id }} .ts-product-editorial__keywords {
+      margin-top: .675rem;
+    }
+
+    #TSProductEditorial-{{ section.id }} .ts-product-editorial__purchase {
+      grid-template-columns: minmax(0, 1fr) minmax(150px, 44%);
+      gap: .75rem;
+    }
+
+    #TSProductEditorial-{{ section.id }} .ts-product-editorial__add {
+      min-height: 60px;
+    }
+
+    #TSProductEditorial-{{ section.id }} .ts-product-editorial__story {
+      margin-top: 2rem;
+    }
+
+    #TSProductEditorial-{{ section.id }} .ts-product-editorial__sample-cards {
+      grid-template-columns: 1fr;
+      gap: .65rem;
+    }
+
+    #TSProductEditorial-{{ section.id }} .ts-product-editorial__sample-logo {
+      max-width: 300px;
+      height: 60px;
+    }
+
+    #TSProductEditorial-{{ section.id }} .ts-product-editorial__journey-text {
+      max-width: 100%;
+      font-size: .92rem;
+    }
+
+    #TSProductEditorial-{{ section.id }} .ts-product-editorial__traits {
+      margin-top: 1.55rem;
+    }
+
+    #TSProductEditorial-{{ section.id }} .ts-product-editorial__accordions {
+      margin-top: 0;
+    }
+
+    #TSProductEditorial-{{ section.id }} .ts-product-editorial__accordions--sample {
+      margin-top: 1.35rem;
+    }
+
+
+    #TSProductEditorial-{{ section.id }} .ts-product-editorial__mobile-dots {
+      position: relative;
+      z-index: 4;
+      display: flex;
+      width: 100vw;
+      height: 38px;
+      margin-top: -38px;
+      gap: 7px;
+      align-items: center;
+      justify-content: center;
+      pointer-events: auto;
+    }
+
+    @supports (width: 100dvw) {
+      #TSProductEditorial-{{ section.id }} .ts-product-editorial__mobile-dots {
+        width: 100dvw;
+      }
+    }
+
+    #TSProductEditorial-{{ section.id }} .ts-product-editorial__dot {
+      display: block;
+      width: 7px;
+      min-width: 7px;
+      height: 7px;
+      margin: 0;
+      padding: 0;
+      border: 0;
+      border-radius: 999px;
+      color: #000000;
+      background: #000000;
+      opacity: .28;
+      cursor: pointer;
+      appearance: none;
+      -webkit-appearance: none;
+      transition:
+        width 220ms ease,
+        opacity 220ms ease,
+        transform 220ms ease;
+    }
+
+    #TSProductEditorial-{{ section.id }} .ts-product-editorial__dot.is-active {
+      width: 20px;
+      opacity: .9;
+    }
+
+    #TSProductEditorial-{{ section.id }} .ts-product-editorial__dot:focus-visible {
+      outline: 2px solid #000000;
+      outline-offset: 4px;
+    }
+  }
+
+  @media screen and (max-width: 580px) {
+    #TSProductEditorial-{{ section.id }} .ts-product-editorial__purchase {
+      grid-template-columns: 1fr;
+    }
+
+    #TSProductEditorial-{{ section.id }} .ts-product-editorial__traits {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 1rem;
+    }
+
+    #TSProductEditorial-{{ section.id }} .ts-product-editorial__trait-label,
+    #TSProductEditorial-{{ section.id }} .ts-product-editorial__accordion-subtitle {
+      font-size: .66rem;
+      letter-spacing: .12em;
+    }
+
+    #TSProductEditorial-{{ section.id }} .ts-product-editorial__trait-values,
+    #TSProductEditorial-{{ section.id }} .ts-product-editorial__journey-text,
+    #TSProductEditorial-{{ section.id }} .ts-product-editorial__accordion-content {
+      font-size: .84rem;
+    }
+  }
+{% endstyle %}
+
+<script>
+  (() => {
+    const section = document.getElementById('TSProductEditorial-{{ section.id }}');
+    if (!section || section.dataset.initialized === 'true') return;
+    section.dataset.initialized = 'true';
+
+    const gallery = section.querySelector('[data-ts-gallery]');
+    const mediaItems = Array.from(section.querySelectorAll('[data-ts-media]'));
+    const dots = Array.from(section.querySelectorAll('[data-ts-dot]'));
+    const fallbackHeaderHeight = {{ section.settings.header_height_fallback | json }};
+
+    let maxExpandedHeaderHeight = 0;
+    let dotRaf = null;
+    let resizeRaf = null;
+
+    const getVisibleHeader = () => {
+      const selectors = [
+        '#header-component',
+        'header-component',
+        '.shopify-section-group-header-group',
+        'header'
+      ];
+
+      for (const selector of selectors) {
+        const candidates = Array.from(document.querySelectorAll(selector));
+
+        for (const element of candidates) {
+          const style = window.getComputedStyle(element);
+          const rect = element.getBoundingClientRect();
+
+          if (
+            style.display !== 'none' &&
+            style.visibility !== 'hidden' &&
+            rect.width > window.innerWidth * 0.6 &&
+            rect.height > 20 &&
+            rect.height < 260
+          ) {
+            return element;
+          }
+        }
+      }
+
+      return null;
+    };
+
+    const syncHeaderHeight = (reset = false) => {
+      if (!window.matchMedia('(min-width: 990px)').matches) return;
+
+      if (reset) {
+        maxExpandedHeaderHeight = 0;
+      }
+
+      const header = getVisibleHeader();
+      const measured = header
+        ? Math.round(header.getBoundingClientRect().height)
+        : Number(fallbackHeaderHeight || 0);
+
+      /*
+        Bei einem später kompakter werdenden Sticky-Header behalten wir die
+        größte gemessene Höhe. Damit entspricht die rechte Fläche weiterhin
+        exakt der Höhe unter dem ausgefahrenen Header.
+      */
+      maxExpandedHeaderHeight = Math.max(
+        maxExpandedHeaderHeight,
+        measured,
+        Number(fallbackHeaderHeight || 0)
+      );
+
+      section.style.setProperty(
+        '--ts-pe-header-height',
+        `${maxExpandedHeaderHeight}px`
+      );
+    };
+
+    const syncDots = () => {
+      if (!gallery || dots.length < 2 || mediaItems.length < 2) return;
+      if (!window.matchMedia('(max-width: 989px)').matches) return;
+
+      const scrollLeft = gallery.scrollLeft;
+      let activeIndex = 0;
+      let smallestDistance = Number.POSITIVE_INFINITY;
+
+      mediaItems.forEach((media, index) => {
+        const distance = Math.abs(media.offsetLeft - scrollLeft);
+
+        if (distance < smallestDistance) {
+          smallestDistance = distance;
+          activeIndex = index;
+        }
+      });
+
+      dots.forEach((dot, dotIndex) => {
+        const isActive = dotIndex === activeIndex;
+        dot.classList.toggle('is-active', isActive);
+        dot.setAttribute('aria-current', isActive ? 'true' : 'false');
+      });
+    };
+
+    if (gallery && dots.length > 1 && mediaItems.length > 1) {
+      gallery.addEventListener(
+        'scroll',
+        () => {
+          if (dotRaf) window.cancelAnimationFrame(dotRaf);
+          dotRaf = window.requestAnimationFrame(syncDots);
+        },
+        { passive: true }
+      );
+
+      dots.forEach((dot, index) => {
+        dot.addEventListener('click', () => {
+          const target = mediaItems[index];
+          if (!target) return;
+
+          gallery.scrollTo({
+            left: target.offsetLeft,
+            behavior: 'smooth'
+          });
+        });
+      });
+    }
+
+    const handleResize = () => {
+      if (resizeRaf) window.cancelAnimationFrame(resizeRaf);
+
+      resizeRaf = window.requestAnimationFrame(() => {
+        syncHeaderHeight(true);
+        syncDots();
+      });
+    };
+
+    window.addEventListener('resize', handleResize, { passive: true });
+
+    /*
+      Mehrfach messen, weil Horizon den Header nach dem ersten Paint noch
+      layouten kann.
+    */
+    syncHeaderHeight(true);
+    window.requestAnimationFrame(() => syncHeaderHeight());
+    window.setTimeout(() => syncHeaderHeight(), 180);
+    window.setTimeout(() => syncHeaderHeight(), 650);
+
+    syncDots();
+
+    const accordions = Array.from(section.querySelectorAll('[data-ts-accordion]'));
+
+    accordions.forEach((accordion) => {
+      const trigger = accordion.querySelector('[data-ts-accordion-trigger]');
+      if (!trigger) return;
+
+      trigger.addEventListener('click', () => {
+        const willOpen = !accordion.classList.contains('is-open');
+
+        /*
+          Nur ein Feld darf gleichzeitig geöffnet sein.
+          Beim Öffnen eines Feldes werden alle anderen zuerst geschlossen.
+        */
+        accordions.forEach((otherAccordion) => {
+          const otherTrigger = otherAccordion.querySelector('[data-ts-accordion-trigger]');
+
+          if (otherAccordion !== accordion) {
+            otherAccordion.classList.remove('is-open');
+            if (otherTrigger) {
+              otherTrigger.setAttribute('aria-expanded', 'false');
+            }
+          }
+        });
+
+        accordion.classList.toggle('is-open', willOpen);
+        trigger.setAttribute('aria-expanded', String(willOpen));
+      });
+    });
+  })();
+</script>
+
+{% schema %}
+{
+  "name": "Produkt 50/50 Editorial",
+  "tag": "section",
+  "class": "section",
+  "settings": [
+    {
+      "type": "header",
+      "content": "Farben"
+    },
+    {
+      "type": "color",
+      "id": "background_color",
+      "label": "Hintergrund rechts",
+      "default": "#FFFFFF"
+    },
+    {
+      "type": "color",
+      "id": "text_color",
+      "label": "Textfarbe",
+      "default": "#1F1F1F"
+    },
+    {
+      "type": "color",
+      "id": "muted_color",
+      "label": "Sekundäre Textfarbe",
+      "default": "#6B6B6B"
+    },
+    {
+      "type": "color",
+      "id": "button_background",
+      "label": "Warenkorb Hintergrund",
+      "default": "#E7D18A"
+    },
+    {
+      "type": "color",
+      "id": "button_text_color",
+      "label": "Warenkorb Text",
+      "default": "#FFFFFF"
+    },
+    {
+      "type": "header",
+      "content": "Galerie & Sticky"
+    },
+    {
+      "type": "select",
+      "id": "image_fit",
+      "label": "Bilddarstellung",
+      "options": [
+        {
+          "value": "cover",
+          "label": "Fläche vollständig füllen"
+        },
+        {
+          "value": "contain",
+          "label": "Ganzes Bild zeigen"
+        }
+      ],
+      "default": "cover"
+    },
+    {
+      "type": "range",
+      "id": "header_height_fallback",
+      "label": "Fallback Headerhöhe",
+      "info": "Wird nur verwendet, falls die Headerhöhe nicht automatisch erkannt werden kann.",
+      "min": 32,
+      "max": 120,
+      "step": 2,
+      "unit": "px",
+      "default": 56
+    },
+    {
+      "type": "header",
+      "content": "Rechte Hälfte"
+    },
+    {
+      "type": "range",
+      "id": "panel_padding_top",
+      "label": "Abstand oben Desktop",
+      "min": 20,
+      "max": 120,
+      "step": 4,
+      "unit": "px",
+      "default": 48
+    },
+    {
+      "type": "range",
+      "id": "panel_padding_horizontal",
+      "label": "Seitenabstand Desktop",
+      "min": 24,
+      "max": 100,
+      "step": 4,
+      "unit": "px",
+      "default": 56
+    },
+    {
+      "type": "range",
+      "id": "panel_padding_bottom",
+      "label": "Abstand unten Desktop",
+      "min": 20,
+      "max": 100,
+      "step": 4,
+      "unit": "px",
+      "default": 48
+    },
+    {
+      "type": "range",
+      "id": "logo_width",
+      "label": "Parfumlogo Breite Desktop",
+      "min": 25,
+      "max": 90,
+      "step": 1,
+      "unit": "%",
+      "default": 52
+    },
+    {
+      "type": "header",
+      "content": "Buybox"
+    },
+    {
+      "type": "text",
+      "id": "fallback_keywords",
+      "label": "Fallback Charakter-Keywords",
+      "default": "Warm · Würzig · Souverän · Verführerisch"
+    },
+    {
+      "type": "text",
+      "id": "product_type",
+      "label": "Produktart",
+      "default": "Extrait de Parfum"
+    },
+    {
+      "type": "text",
+      "id": "volume",
+      "label": "Füllmenge",
+      "default": "100 ML"
+    },
+    {
+      "type": "text",
+      "id": "add_to_cart_text",
+      "label": "Warenkorb-Button",
+      "default": "In den Warenkorb"
+    },
+    {
+      "type": "text",
+      "id": "sold_out_text",
+      "label": "Ausverkauft-Text",
+      "default": "Ausverkauft"
+    },
+    {
+      "type": "range",
+      "id": "button_radius",
+      "label": "Button Rundung",
+      "min": 0,
+      "max": 30,
+      "step": 1,
+      "unit": "px",
+      "default": 16
+    },
+    {
+      "type": "header",
+      "content": "Probenset-Modus"
+    },
+    {
+      "type": "product",
+      "id": "sample_set_product",
+      "label": "Probenset-Produkt",
+      "info": "Nur bei diesem Produkt wird statt Duftreise/Anlass/Jahreszeit die Probenset-Darstellung gezeigt."
+    },
+    {
+      "type": "text",
+      "id": "sample_set_subline",
+      "label": "Probenset Subline",
+      "default": "Drei Signaturen · Ein Set"
+    },
+    {
+      "type": "text",
+      "id": "sample_set_volume",
+      "label": "Füllmenge Probenset",
+      "info": "Wird nur beim ausgewählten Probenset-Produkt angezeigt.",
+      "default": "3 × 5 ML"
+    },
+    {
+      "type": "text",
+      "id": "sample_link_text",
+      "label": "Linktext der Duftkarten",
+      "default": "Zum Duft"
+    },
+    {
+      "type": "product",
+      "id": "sample_product_1",
+      "label": "Duft 1"
+    },
+    {
+      "type": "textarea",
+      "id": "sample_text_1",
+      "label": "Kurztext Duft 1",
+      "default": "Grapefruit, Honig und Zimt in einer klaren, tragbaren Signatur."
+    },
+    {
+      "type": "product",
+      "id": "sample_product_2",
+      "label": "Duft 2"
+    },
+    {
+      "type": "textarea",
+      "id": "sample_text_2",
+      "label": "Kurztext Duft 2",
+      "default": "Die opulenteste und exklusivste Komposition der Kollektion."
+    },
+    {
+      "type": "product",
+      "id": "sample_product_3",
+      "label": "Duft 3"
+    },
+    {
+      "type": "textarea",
+      "id": "sample_text_3",
+      "label": "Kurztext Duft 3",
+      "default": "Vanille, Whiskey und Hölzer mit klarer Abendwirkung."
+    },
+    {
+      "type": "header",
+      "content": "Duftreise & Informationen"
+    },
+    {
+      "type": "text",
+      "id": "fallback_occasion",
+      "label": "Fallback Anlass",
+      "default": "Dinner · Date · Besondere Abende"
+    },
+    {
+      "type": "text",
+      "id": "fallback_season",
+      "label": "Fallback Jahreszeit",
+      "default": "Herbst · Winter"
+    },
+    {
+      "type": "text",
+      "id": "journey_label",
+      "label": "Überschrift Duftreise",
+      "default": "Die Duftreise"
+    },
+    {
+      "type": "textarea",
+      "id": "fallback_journey",
+      "label": "Fallback Duftreise",
+      "default": "Ein heller Moment eröffnet den Duft, bevor Wärme und Würze langsam die Führung übernehmen. Mit der Zeit wird die Komposition tiefer, ruhiger und hautnäher – bis eine elegante, lang anhaltende Basis zurückbleibt."
+    },
+    {
+      "type": "text",
+      "id": "profile_title",
+      "label": "Titel Duftprofil-Feld",
+      "default": "Duftprofil"
+    },
+    {
+      "type": "header",
+      "content": "Aufklappfelder"
+    },
+    {
+      "type": "text",
+      "id": "safety_title",
+      "label": "Titel Feld 1",
+      "default": "Inhaltsstoffe & Sicherheitshinweise"
+    },
+    {
+      "type": "text",
+      "id": "safety_subtitle",
+      "label": "Zwischenüberschrift Sicherheit",
+      "default": "Sicherheitshinweise"
+    },
+    {
+      "type": "richtext",
+      "id": "safety_content",
+      "label": "Allgemeine Sicherheitshinweise",
+      "default": "<p>Nur zur äußerlichen Anwendung. Kontakt mit Augen und Schleimhäuten vermeiden. Von Kindern fernhalten. Entzündlich – von Hitze, Funken und offenen Flammen fernhalten.</p>"
+    },
+    {
+      "type": "text",
+      "id": "ingredients_subtitle",
+      "label": "Zwischenüberschrift Inhaltsstoffe",
+      "default": "Inhaltsstoffe"
+    },
+    {
+      "type": "textarea",
+      "id": "ingredients_fallback",
+      "label": "Fallback Inhaltsstoffe",
+      "info": "Nur sichtbar, falls custom.inhaltsstoffe beim Produkt leer ist.",
+      "default": "Inhaltsstoffe beim Produkt hinterlegen."
+    },
+    {
+      "type": "text",
+      "id": "shipping_title",
+      "label": "Titel Feld 2",
+      "default": "Versand und Rücksendung"
+    },
+    {
+      "type": "richtext",
+      "id": "shipping_content",
+      "label": "Inhalt Feld 2",
+      "default": "<p>Ergänze hier Informationen zu Versand und Rücksendung.</p>"
+    },
+    {
+      "type": "header",
+      "content": "Mobil"
+    },
+    {
+      "type": "range",
+      "id": "mobile_padding_top",
+      "label": "Abstand oben Mobil",
+      "min": 20,
+      "max": 80,
+      "step": 4,
+      "unit": "px",
+      "default": 36
+    },
+    {
+      "type": "range",
+      "id": "mobile_padding_bottom",
+      "label": "Abstand unten Mobil",
+      "min": 24,
+      "max": 100,
+      "step": 4,
+      "unit": "px",
+      "default": 56
+    }
+  ],
+  "presets": [
+    {
+      "name": "Produkt 50/50 Editorial"
+    }
+  ]
+}
+{% endschema %}

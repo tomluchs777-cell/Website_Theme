@@ -1,0 +1,595 @@
+{% liquid
+  assign reifedauer_metafield = product.metafields.custom.reifedauer
+  assign reifedauer = reifedauer_metafield.value | default: reifedauer_metafield | plus: 0
+
+  if reifedauer > 0
+    assign mazeration = reifedauer | times: 0.4 | round
+
+    if mazeration < 1
+      assign mazeration = 1
+    endif
+
+    if mazeration > reifedauer
+      assign mazeration = reifedauer
+    endif
+
+    assign nachreife = reifedauer | minus: mazeration
+
+    assign mazeration_prozent = mazeration | times: 100.0 | divided_by: reifedauer
+    assign nachreife_prozent = 100.0 | minus: mazeration_prozent
+
+    assign mazeration_label_position = mazeration_prozent | divided_by: 2.0
+    assign nachreife_halb = nachreife_prozent | divided_by: 2.0
+    assign nachreife_label_position = mazeration_prozent | plus: nachreife_halb
+  endif
+%}
+
+{% if reifedauer > 0 %}
+  <section
+    id="reifung-{{ section.id }}"
+    class="reifung"
+    style="
+      --reifung-bg: {{ section.settings.background_color }};
+      --reifung-text: {{ section.settings.text_color }};
+      --reifung-muted: {{ section.settings.muted_text_color }};
+      --reifung-phase-1: {{ section.settings.mazeration_color }};
+      --reifung-phase-2: {{ section.settings.nachreife_color }};
+      --reifung-card-bg: {{ section.settings.card_background }};
+      --reifung-border: {{ section.settings.border_color }};
+      --reifung-max: {{ section.settings.max_width }}px;
+      --reifung-pt: {{ section.settings.padding_top }}px;
+      --reifung-pb: {{ section.settings.padding_bottom }}px;
+    "
+  >
+    <div class="reifung__inner">
+
+      <header class="reifung__header">
+        <p class="reifung__overline">{{ section.settings.overline }}</p>
+
+        <div class="reifung__duration">
+          <span class="reifung__number" data-reifung-counter data-target="{{ reifedauer }}">{{ reifedauer }}</span>
+          <span class="reifung__unit">Wochen</span>
+        </div>
+      </header>
+
+      <div class="reifung__timeline">
+        <div class="reifung__bar-reveal">
+          <div
+            class="reifung__bar"
+            role="img"
+            aria-label="{{ reifedauer }} Wochen Gesamtreifung: {{ mazeration }} Wochen Mazeration und {{ nachreife }} Wochen Nachreife."
+          >
+            <div
+              class="reifung__segment reifung__segment--mazeration"
+              style="width: {{ mazeration_prozent }}%;"
+            ></div>
+
+            <div
+              class="reifung__segment reifung__segment--nachreife"
+              style="width: {{ nachreife_prozent }}%;"
+            ></div>
+          </div>
+        </div>
+
+        <div class="reifung__labels">
+          <div
+            class="reifung__label reifung__label--mazeration"
+            style="left: {{ mazeration_label_position }}%;"
+          >
+            <strong>Mazeration</strong>
+            {% if section.settings.show_phase_duration %}
+              <span>{{ mazeration }} {% if mazeration == 1 %}Woche{% else %}Wochen{% endif %}</span>
+            {% endif %}
+          </div>
+
+          <div
+            class="reifung__label reifung__label--nachreife"
+            style="left: {{ nachreife_label_position }}%;"
+          >
+            <strong>Nachreife</strong>
+            {% if section.settings.show_phase_duration %}
+              <span>{{ nachreife }} {% if nachreife == 1 %}Woche{% else %}Wochen{% endif %}</span>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+
+      <div class="reifung__cards">
+        <article class="reifung__card">
+          <div class="reifung__card-title">
+            <span class="reifung__marker reifung__marker--mazeration"></span>
+            <h3>Mazeration</h3>
+          </div>
+          <p>{{ section.settings.mazeration_text }}</p>
+        </article>
+
+        <article class="reifung__card">
+          <div class="reifung__card-title">
+            <span class="reifung__marker reifung__marker--nachreife"></span>
+            <h3>Nachreife</h3>
+          </div>
+          <p>{{ section.settings.nachreife_text }}</p>
+        </article>
+      </div>
+
+    </div>
+  </section>
+
+  <style>
+    #reifung-{{ section.id }} {
+      width: 100%;
+      box-sizing: border-box;
+      overflow: hidden;
+      background: var(--reifung-bg);
+      color: var(--reifung-text);
+      padding-top: var(--reifung-pt);
+      padding-bottom: var(--reifung-pb);
+    }
+
+    #reifung-{{ section.id }} *,
+    #reifung-{{ section.id }} *::before,
+    #reifung-{{ section.id }} *::after {
+      box-sizing: border-box;
+    }
+
+    /* Section auf Desktop UND Mobil aus der Theme-/page-width-Begrenzung
+       herausziehen, damit der Hintergrund bis an beide Bildschirmkanten reicht. */
+    #reifung-{{ section.id }} {
+      position: relative;
+      left: 50%;
+      width: 100vw;
+      max-width: 100vw;
+      margin-right: -50vw;
+      margin-left: -50vw;
+      overflow-x: clip;
+    }
+
+    @supports (width: 100dvw) {
+      #reifung-{{ section.id }} {
+        width: 100dvw;
+        max-width: 100dvw;
+        margin-right: -50dvw;
+        margin-left: -50dvw;
+      }
+    }
+
+    #reifung-{{ section.id }} .reifung__inner {
+      width: min(calc(100% - 40px), var(--reifung-max));
+      margin: 0 auto;
+    }
+
+    #reifung-{{ section.id }} .reifung__header {
+      text-align: center;
+    }
+
+    #reifung-{{ section.id }} .reifung__overline {
+      margin: 0;
+      color: var(--reifung-muted);
+      font-size: 13px;
+      line-height: 1.2;
+      font-weight: 600;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+    }
+
+    #reifung-{{ section.id }} .reifung__duration {
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+      gap: 16px;
+      margin-top: 22px;
+    }
+
+    #reifung-{{ section.id }} .reifung__number {
+      display: block;
+      font-size: clamp(92px, 11vw, 180px);
+      line-height: 0.78;
+      font-weight: 600;
+      letter-spacing: -0.055em;
+    }
+
+    #reifung-{{ section.id }} .reifung__unit {
+      display: block;
+      padding-bottom: 12px;
+      font-size: clamp(20px, 2.1vw, 30px);
+      line-height: 1;
+    }
+
+    #reifung-{{ section.id }} .reifung__timeline {
+      position: relative;
+      left: 50%;
+      width: min(calc(100vw - 64px), 1800px);
+      margin-top: 58px;
+      transform: translateX(-50%);
+    }
+
+    #reifung-{{ section.id }} .reifung__bar-reveal {
+      width: 100%;
+      transform: scaleX(0);
+      transform-origin: left center;
+      will-change: transform;
+    }
+
+    #reifung-{{ section.id }}.is-animated .reifung__bar-reveal {
+      transform: scaleX(1);
+      transition: transform 2400ms cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    #reifung-{{ section.id }} .reifung__bar {
+      display: flex;
+      width: 100%;
+      height: {{ section.settings.bar_height }}px;
+      overflow: hidden;
+      border-radius: 999px;
+      background: var(--reifung-border);
+    }
+
+    #reifung-{{ section.id }} .reifung__segment {
+      height: 100%;
+      min-width: 0;
+    }
+
+    #reifung-{{ section.id }} .reifung__segment--mazeration {
+      background: var(--reifung-phase-1);
+    }
+
+    #reifung-{{ section.id }} .reifung__segment--nachreife {
+      background: var(--reifung-phase-2);
+    }
+
+    #reifung-{{ section.id }} .reifung__labels {
+      position: relative;
+      width: 100%;
+      height: 50px;
+      margin-top: 15px;
+    }
+
+    #reifung-{{ section.id }} .reifung__label {
+      position: absolute;
+      top: 0;
+      transform: translateX(-50%);
+      text-align: center;
+      white-space: nowrap;
+    }
+
+    #reifung-{{ section.id }} .reifung__label strong {
+      display: block;
+      color: var(--reifung-text);
+      font-size: 16px;
+      line-height: 1.3;
+      font-weight: 600;
+    }
+
+    #reifung-{{ section.id }} .reifung__label span {
+      display: block;
+      margin-top: 4px;
+      color: var(--reifung-muted);
+      font-size: 13px;
+      line-height: 1.3;
+    }
+
+    #reifung-{{ section.id }} .reifung__cards {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 20px;
+      margin-top: 46px;
+    }
+
+    #reifung-{{ section.id }} .reifung__card {
+      margin: 0;
+      padding: 30px;
+      border: 1px solid var(--reifung-border);
+      background: var(--reifung-card-bg);
+    }
+
+    #reifung-{{ section.id }} .reifung__card-title {
+      display: flex;
+      align-items: center;
+      gap: 11px;
+    }
+
+    #reifung-{{ section.id }} .reifung__card h3 {
+      margin: 0;
+      color: var(--reifung-text);
+      font-size: 20px;
+      line-height: 1.25;
+      font-weight: 600;
+    }
+
+    #reifung-{{ section.id }} .reifung__card p {
+      margin: 15px 0 0;
+      color: var(--reifung-muted);
+      font-size: 15px;
+      line-height: 1.65;
+    }
+
+    #reifung-{{ section.id }} .reifung__marker {
+      display: block;
+      width: 10px;
+      height: 10px;
+      flex: 0 0 10px;
+      border-radius: 50%;
+    }
+
+    #reifung-{{ section.id }} .reifung__marker--mazeration {
+      background: var(--reifung-phase-1);
+    }
+
+    #reifung-{{ section.id }} .reifung__marker--nachreife {
+      background: var(--reifung-phase-2);
+    }
+
+    @media screen and (max-width: 749px) {
+      /* Auf Mobilgeräten den gesamten Abschnitt aus eventuell vorhandenen
+         Theme-/Page-Width-Begrenzungen auf volle Bildschirmbreite ziehen. */
+      #reifung-{{ section.id }} {
+        position: relative;
+        left: 50%;
+        width: 100vw;
+        max-width: 100vw;
+        margin-left: -50vw;
+        margin-right: -50vw;
+      }
+
+      #reifung-{{ section.id }} .reifung__inner {
+        width: calc(100% - 32px);
+        max-width: none;
+      }
+
+      #reifung-{{ section.id }} .reifung__duration {
+        gap: 10px;
+        margin-top: 18px;
+      }
+
+      #reifung-{{ section.id }} .reifung__number {
+        font-size: clamp(78px, 25vw, 112px);
+      }
+
+      #reifung-{{ section.id }} .reifung__unit {
+        padding-bottom: 8px;
+        font-size: 18px;
+      }
+
+      #reifung-{{ section.id }} .reifung__timeline {
+        width: calc(100vw - 24px);
+        margin-top: 42px;
+      }
+
+      #reifung-{{ section.id }} .reifung__label strong {
+        font-size: 14px;
+      }
+
+      #reifung-{{ section.id }} .reifung__label span {
+        font-size: 12px;
+      }
+
+      #reifung-{{ section.id }} .reifung__cards {
+        grid-template-columns: 1fr;
+        gap: 12px;
+        margin-top: 34px;
+      }
+
+      #reifung-{{ section.id }} .reifung__card {
+        padding: 22px;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      #reifung-{{ section.id }} .reifung__bar-reveal {
+        transform: none !important;
+        transition: none !important;
+      }
+    }
+  </style>
+
+  <script>
+    (function() {
+      var section = document.getElementById('reifung-{{ section.id }}');
+      if (!section || section.dataset.reifungInit === 'true') return;
+      section.dataset.reifungInit = 'true';
+
+      var counter = section.querySelector('[data-reifung-counter]');
+      if (!counter) return;
+
+      var target = parseInt(counter.getAttribute('data-target'), 10) || 0;
+      var reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      var hasAnimated = false;
+
+      function easeOutCubic(t) {
+        return 1 - Math.pow(1 - t, 3);
+      }
+
+      function startAnimation() {
+        if (hasAnimated) return;
+        hasAnimated = true;
+
+        if (reduceMotion) {
+          counter.textContent = target;
+          section.classList.add('is-animated');
+          return;
+        }
+
+        counter.textContent = '0';
+
+        requestAnimationFrame(function() {
+          section.classList.add('is-animated');
+
+          var duration = 2400;
+          var start = performance.now();
+
+          function frame(now) {
+            var progress = Math.min((now - start) / duration, 1);
+            var eased = easeOutCubic(progress);
+            counter.textContent = Math.round(target * eased);
+
+            if (progress < 1) {
+              requestAnimationFrame(frame);
+            } else {
+              counter.textContent = target;
+            }
+          }
+
+          requestAnimationFrame(frame);
+        });
+      }
+
+      if (reduceMotion) {
+        startAnimation();
+        return;
+      }
+
+      counter.textContent = '0';
+
+      if ('IntersectionObserver' in window) {
+        var observer = new IntersectionObserver(function(entries) {
+          entries.forEach(function(entry) {
+            if (entry.isIntersecting) {
+              startAnimation();
+              observer.disconnect();
+            }
+          });
+        }, {
+          threshold: 0.28
+        });
+
+        observer.observe(section);
+      } else {
+        startAnimation();
+      }
+    })();
+  </script>
+
+{% elsif request.design_mode %}
+  <div style="padding: 24px; text-align: center;">
+    Für dieses Produkt ist im Metafeld <strong>custom.reifedauer</strong> noch keine Reifedauer hinterlegt.
+  </div>
+{% endif %}
+
+{% schema %}
+{
+  "name": "Reifung",
+  "tag": "section",
+  "class": "section",
+  "settings": [
+    {
+      "type": "header",
+      "content": "Inhalt"
+    },
+    {
+      "type": "text",
+      "id": "overline",
+      "label": "Überüberschrift",
+      "default": "REIFUNG"
+    },
+    {
+      "type": "textarea",
+      "id": "mazeration_text",
+      "label": "Erläuterung Mazeration",
+      "default": "Während der Mazeration verbindet sich die Duftkomposition mit dem Alkohol. Die einzelnen Facetten beginnen, sich zu einem harmonischen Gesamtbild zusammenzufügen."
+    },
+    {
+      "type": "textarea",
+      "id": "nachreife_text",
+      "label": "Erläuterung Nachreife",
+      "default": "In der anschließenden Nachreife gewinnt die Komposition weiter an Harmonie, Tiefe und Balance, bevor der Duft seinen endgültigen Charakter erreicht."
+    },
+    {
+      "type": "checkbox",
+      "id": "show_phase_duration",
+      "label": "Wochen je Phase anzeigen",
+      "default": true
+    },
+    {
+      "type": "header",
+      "content": "Design"
+    },
+    {
+      "type": "color",
+      "id": "background_color",
+      "label": "Hintergrund",
+      "default": "#000000"
+    },
+    {
+      "type": "color",
+      "id": "text_color",
+      "label": "Textfarbe",
+      "default": "#ffffff"
+    },
+    {
+      "type": "color",
+      "id": "muted_text_color",
+      "label": "Sekundäre Textfarbe",
+      "default": "#b8b8b8"
+    },
+    {
+      "type": "color",
+      "id": "mazeration_color",
+      "label": "Farbe Mazeration",
+      "default": "#9b7a3e"
+    },
+    {
+      "type": "color",
+      "id": "nachreife_color",
+      "label": "Farbe Nachreife",
+      "default": "#d2bea0"
+    },
+    {
+      "type": "color",
+      "id": "card_background",
+      "label": "Hintergrund der Erklärungsfelder",
+      "default": "#000000"
+    },
+    {
+      "type": "color",
+      "id": "border_color",
+      "label": "Rahmenfarbe",
+      "default": "#383838"
+    },
+    {
+      "type": "range",
+      "id": "bar_height",
+      "min": 6,
+      "max": 30,
+      "step": 2,
+      "unit": "px",
+      "label": "Balkenhöhe",
+      "default": 14
+    },
+    {
+      "type": "range",
+      "id": "max_width",
+      "min": 800,
+      "max": 1600,
+      "step": 50,
+      "unit": "px",
+      "label": "Maximale Inhaltsbreite",
+      "default": 1200
+    },
+    {
+      "type": "range",
+      "id": "padding_top",
+      "min": 20,
+      "max": 140,
+      "step": 4,
+      "unit": "px",
+      "label": "Abstand oben",
+      "default": 72
+    },
+    {
+      "type": "range",
+      "id": "padding_bottom",
+      "min": 20,
+      "max": 140,
+      "step": 4,
+      "unit": "px",
+      "label": "Abstand unten",
+      "default": 72
+    }
+  ],
+  "presets": [
+    {
+      "name": "Reifung"
+    }
+  ]
+}
+{% endschema %}

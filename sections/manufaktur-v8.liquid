@@ -1,0 +1,903 @@
+{% liquid
+  assign hero_image = section.settings.hero_image
+  assign hero_mobile_image = section.settings.hero_mobile_image | default: hero_image
+
+  # Central content source shared with the homepage preview.
+  # Metaobject definition: manufaktur_inhalt
+  # Entry handle: manufaktur
+  # Field "sections": list of manufaktur_abschnitt references
+  assign ts_manufaktur_source = metaobjects.manufaktur_inhalt.manufaktur
+  assign ts_manufaktur_entries = blank
+
+  if ts_manufaktur_source != blank and ts_manufaktur_source.sections != blank
+    assign ts_manufaktur_entries = ts_manufaktur_source.sections.value
+  endif
+%}
+
+<section
+  id="TSManufacture-{{ section.id }}"
+  class="ts-manufacture"
+  style="
+    --ts-hero-overline-size: {{ section.settings.hero_overline_size }}px;
+    --ts-hero-heading-size: {{ section.settings.hero_heading_size }}px;
+    --ts-hero-text-size: {{ section.settings.hero_text_size }}px;
+  "
+>
+  <div class="ts-manufacture__hero">
+    <div class="ts-manufacture__hero-media" aria-hidden="true">
+      {% if section.settings.hero_video != blank %}
+        {{ section.settings.hero_video | video_tag: autoplay: true, muted: true, loop: true, controls: false, playsinline: true, preload: 'metadata', class: 'ts-manufacture__hero-video' }}
+      {% elsif hero_image != blank %}
+        <picture>
+          {% if hero_mobile_image != blank %}
+            <source media="(max-width: 749px)" srcset="{{ hero_mobile_image | image_url: width: 1100 }}">
+          {% endif %}
+          {{ hero_image | image_url: width: 2600 | image_tag: class: 'ts-manufacture__hero-image', widths: '900, 1300, 1800, 2200, 2600', sizes: '100vw', loading: 'eager', fetchpriority: 'high', alt: '' }}
+        </picture>
+      {% else %}
+        {{ 'lifestyle-1' | placeholder_svg_tag: 'ts-manufacture__hero-placeholder' }}
+      {% endif %}
+    </div>
+
+    <div class="ts-manufacture__hero-overlay" style="--ts-hero-overlay: {{ section.settings.hero_overlay | divided_by: 100.0 }};"></div>
+
+    <div class="ts-manufacture__hero-content ts-manufacture__hero-content--{{ section.settings.hero_text_alignment }}">
+      {% if section.settings.hero_overline != blank %}<div class="ts-manufacture__overline">{{ section.settings.hero_overline }}</div>{% endif %}
+      {% if section.settings.hero_heading != blank %}<h1 class="ts-manufacture__hero-heading">{{ section.settings.hero_heading }}</h1>{% endif %}
+      {% if section.settings.hero_text != blank %}<div class="ts-manufacture__hero-text rte">{{ section.settings.hero_text }}</div>{% endif %}
+    </div>
+
+    {% if section.settings.show_scroll_hint %}
+      <a class="ts-manufacture__scroll-hint" href="#TSManufactureContent-{{ section.id }}">
+        <span>{{ section.settings.scroll_hint_text }}</span>
+        <span class="ts-manufacture__scroll-line" aria-hidden="true"></span>
+      </a>
+    {% endif %}
+  </div>
+
+  <div id="TSManufactureContent-{{ section.id }}" class="ts-manufacture__chapters">
+    {% if ts_manufaktur_entries != blank %}
+      {% for item in ts_manufaktur_entries %}
+        {% liquid
+          assign image_side = item.image_side.value | default: 'auto'
+          if image_side == 'auto'
+            assign remainder = forloop.index | modulo: 2
+            if remainder == 1
+              assign image_side = 'left'
+            else
+              assign image_side = 'right'
+            endif
+          endif
+
+          assign block_image = item.image.value
+          assign block_mobile_image = item.mobile_image.value | default: block_image
+          assign image_position = item.image_position.value | default: 'center center'
+          assign overline = item.overline.value
+          assign heading = item.heading.value | default: item.name.value
+          assign link_label = item.link_label.value
+          assign link_url = item.link.value
+        %}
+
+        <article
+          class="ts-manufacture__chapter ts-manufacture__chapter--image-{{ image_side }} js-ts-manufacture-chapter"
+          style="--ts-image-position: {{ image_position }};"
+          data-manufaktur-handle="{{ item.system.handle }}"
+        >
+          <div class="ts-manufacture__chapter-media">
+            {% if block_image != blank %}
+              <picture>
+                {% if block_mobile_image != blank %}
+                  <source media="(max-width: 749px)" srcset="{{ block_mobile_image | image_url: width: 1100 }}">
+                {% endif %}
+                {{
+                  block_image
+                  | image_url: width: 2200
+                  | image_tag:
+                    class: 'ts-manufacture__chapter-image',
+                    widths: '700, 1000, 1400, 1800, 2200',
+                    sizes: '100vw',
+                    loading: 'lazy',
+                    alt: heading
+                }}
+              </picture>
+            {% else %}
+              {{ 'lifestyle-2' | placeholder_svg_tag: 'ts-manufacture__chapter-placeholder' }}
+            {% endif %}
+          </div>
+
+          <div class="ts-manufacture__chapter-copy">
+            <div class="ts-manufacture__chapter-copy-inner">
+              {% if section.settings.show_numbers %}
+                <div class="ts-manufacture__chapter-number ts-manufacture__reveal ts-manufacture__reveal--1">
+                  {{ forloop.index | prepend: '0' | slice: -2, 2 }}
+                </div>
+              {% endif %}
+
+              {% if overline != blank %}
+                <div class="ts-manufacture__chapter-overline ts-manufacture__reveal ts-manufacture__reveal--2">
+                  {{ overline }}
+                </div>
+              {% endif %}
+
+              {% if heading != blank %}
+                <h2 class="ts-manufacture__chapter-heading ts-manufacture__reveal ts-manufacture__reveal--3">
+                  {{ heading }}
+                </h2>
+              {% endif %}
+
+              {% if item.text != blank %}
+                <div class="ts-manufacture__chapter-text rte ts-manufacture__reveal ts-manufacture__reveal--4">
+                  {{ item.text | metafield_tag }}
+                </div>
+              {% endif %}
+
+              {% if link_label != blank and link_url != blank %}
+                <a
+                  class="ts-manufacture__chapter-link ts-manufacture__reveal ts-manufacture__reveal--5"
+                  href="{{ link_url }}"
+                >
+                  {{ link_label }} <span aria-hidden="true">→</span>
+                </a>
+              {% endif %}
+            </div>
+          </div>
+        </article>
+      {% endfor %}
+    {% else %}
+    {% for block in section.blocks %}
+      {% liquid
+        assign image_side = block.settings.image_side
+        if image_side == 'auto'
+          assign remainder = forloop.index | modulo: 2
+          if remainder == 1
+            assign image_side = 'left'
+          else
+            assign image_side = 'right'
+          endif
+        endif
+        assign block_image = block.settings.image
+        assign block_mobile_image = block.settings.mobile_image | default: block_image
+      %}
+
+      <article class="ts-manufacture__chapter ts-manufacture__chapter--image-{{ image_side }} js-ts-manufacture-chapter" style="--ts-chapter-bg: {{ block.settings.background }}; --ts-chapter-color: {{ block.settings.text_color }}; --ts-image-position: {{ block.settings.image_position }};" {{ block.shopify_attributes }}>
+        <div class="ts-manufacture__chapter-media">
+          {% if block_image != blank %}
+            <picture>
+              {% if block_mobile_image != blank %}<source media="(max-width: 749px)" srcset="{{ block_mobile_image | image_url: width: 1100 }}">{% endif %}
+              {{ block_image | image_url: width: 2200 | image_tag: class: 'ts-manufacture__chapter-image', widths: '700, 1000, 1400, 1800, 2200', sizes: '(min-width: 750px) 66.666vw, 100vw', loading: 'lazy', alt: block.settings.heading }}
+            </picture>
+          {% else %}
+            {{ 'lifestyle-2' | placeholder_svg_tag: 'ts-manufacture__chapter-placeholder' }}
+          {% endif %}
+        </div>
+
+        <div class="ts-manufacture__chapter-copy">
+          <div class="ts-manufacture__chapter-copy-inner">
+            {% if section.settings.show_numbers %}<div class="ts-manufacture__chapter-number ts-manufacture__reveal ts-manufacture__reveal--1">{{ forloop.index | prepend: '0' | slice: -2, 2 }}</div>{% endif %}
+            {% if block.settings.overline != blank %}<div class="ts-manufacture__chapter-overline ts-manufacture__reveal ts-manufacture__reveal--2">{{ block.settings.overline }}</div>{% endif %}
+            {% if block.settings.heading != blank %}<h2 class="ts-manufacture__chapter-heading ts-manufacture__reveal ts-manufacture__reveal--3">{{ block.settings.heading }}</h2>{% endif %}
+            {% if block.settings.text != blank %}<div class="ts-manufacture__chapter-text rte ts-manufacture__reveal ts-manufacture__reveal--4">{{ block.settings.text }}</div>{% endif %}
+            {% if block.settings.link_label != blank and block.settings.link != blank %}
+              <a class="ts-manufacture__chapter-link ts-manufacture__reveal ts-manufacture__reveal--5" href="{{ block.settings.link }}">{{ block.settings.link_label }} <span aria-hidden="true">→</span></a>
+            {% endif %}
+          </div>
+        </div>
+      </article>
+    {% endfor %}
+    {% endif %}
+  </div>
+</section>
+
+
+{% stylesheet %}
+  .ts-manufacture { width: 100%; overflow: clip; background: #fff; color: #111; }
+  .ts-manufacture__hero { position: relative; width: 100%; height: 33svh; min-height: 33svh; display: grid; place-items: center; overflow: hidden; color: #fff; isolation: isolate; }
+  .ts-manufacture__hero-media, .ts-manufacture__hero-media picture, .ts-manufacture__hero-image, .ts-manufacture__hero-video, .ts-manufacture__hero-placeholder { position: absolute; inset: 0; width: 100%; height: 100%; }
+  .ts-manufacture__hero-image, .ts-manufacture__hero-video { object-fit: cover; object-position: center; }
+  .ts-manufacture__hero-placeholder { background: #171717; fill: #4b4b4b; }
+  .ts-manufacture__hero-overlay { position: absolute; inset: 0; z-index: 1; background: rgb(0 0 0 / var(--ts-hero-overlay, .32)); pointer-events: none; }
+  .ts-manufacture__hero-content { position: relative; z-index: 2; width: min(920px, calc(100% - 48px)); padding-block: 80px; }
+  .ts-manufacture__hero-content--left { margin-right: auto; margin-left: clamp(24px, 7vw, 120px); text-align: left; }
+  .ts-manufacture__hero-content--center { margin-inline: auto; text-align: center; }
+  .ts-manufacture__hero-content--right { margin-right: clamp(24px, 7vw, 120px); margin-left: auto; text-align: right; }
+  .ts-manufacture__overline, .ts-manufacture__chapter-overline { margin-bottom: 18px; font-size: .72rem; font-weight: 600; letter-spacing: .18em; text-transform: uppercase; }
+  .ts-manufacture__hero .ts-manufacture__overline { font-size: var(--ts-hero-overline-size); }
+  .ts-manufacture__hero-heading { margin: 0; font-family: var(--font-heading--family, serif); font-style: var(--font-heading--style, normal); font-weight: var(--font-heading--weight, 400); font-size: var(--ts-hero-heading-size); line-height: .88; letter-spacing: -.035em; color: inherit; }
+  .ts-manufacture__hero-text { width: min(640px, 100%); margin-top: 26px; font-size: var(--ts-hero-text-size); line-height: 1.55; }
+  .ts-manufacture__hero-content--center .ts-manufacture__hero-text { margin-inline: auto; }
+  .ts-manufacture__hero-content--right .ts-manufacture__hero-text { margin-left: auto; }
+
+  /* TOM SCHILLER – Landing text entrance */
+  .ts-manufacture__hero-content > .ts-manufacture__overline,
+  .ts-manufacture__hero-content > .ts-manufacture__hero-heading,
+  .ts-manufacture__hero-content > .ts-manufacture__hero-text {
+    opacity: 0;
+    transform: translateY(42px);
+    animation: ts-manufacture-hero-reveal 1.05s cubic-bezier(.22, 1, .36, 1) forwards;
+    will-change: transform, opacity;
+  }
+
+  .ts-manufacture__hero-content > .ts-manufacture__overline { animation-delay: .12s; }
+  .ts-manufacture__hero-content > .ts-manufacture__hero-heading { animation-delay: .27s; }
+  .ts-manufacture__hero-content > .ts-manufacture__hero-text { animation-delay: .46s; }
+
+  @keyframes ts-manufacture-hero-reveal {
+    from { opacity: 0; transform: translateY(42px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .ts-manufacture__hero-content > .ts-manufacture__overline,
+    .ts-manufacture__hero-content > .ts-manufacture__hero-heading,
+    .ts-manufacture__hero-content > .ts-manufacture__hero-text {
+      opacity: 1;
+      transform: none;
+      animation: none;
+    }
+  }
+  .ts-manufacture__scroll-hint { position: absolute; z-index: 2; bottom: 26px; left: 50%; display: flex; flex-direction: column; align-items: center; gap: 9px; transform: translateX(-50%); color: inherit; font-size: .64rem; letter-spacing: .18em; text-decoration: none; text-transform: uppercase; }
+  .ts-manufacture__scroll-line { display: block; width: 1px; height: 34px; background: currentColor; opacity: .75; }
+  .ts-manufacture__chapters {
+    display: flex;
+    width: 100%;
+    padding: 0;
+    flex-direction: column;
+    gap: 0;
+    background: #000;
+    box-sizing: border-box;
+  }
+
+  .ts-manufacture__chapter {
+    position: relative;
+    display: block;
+    width: 100%;
+    margin: 0;
+    min-height: clamp(620px, 74svh, 900px);
+    overflow: hidden;
+    isolation: isolate;
+    background: #000;
+    color: #fff;
+  }
+
+  /* Full-bleed image behind the entire chapter. */
+  .ts-manufacture__chapter-media {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    background: #000;
+  }
+
+  .ts-manufacture__chapter-media picture,
+  .ts-manufacture__chapter-image,
+  .ts-manufacture__chapter-placeholder {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+  }
+
+  .ts-manufacture__chapter-image {
+    object-fit: cover;
+    object-position: var(--ts-image-position, center);
+    transition: transform 1.2s cubic-bezier(.22, 1, .36, 1);
+  }
+
+  .ts-manufacture__chapter-placeholder {
+    fill: #555;
+    background: #222;
+  }
+
+  /*
+    Progressive blackout across the complete image.
+    Image left: visible left -> fully black right.
+    Image right: fully black left -> visible right.
+  */
+  .ts-manufacture__chapter::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    pointer-events: none;
+  }
+
+  .ts-manufacture__chapter--image-left::after {
+    background: linear-gradient(
+      90deg,
+      rgb(0 0 0 / 0) 0%,
+      rgb(0 0 0 / .15) 12%,
+      rgb(0 0 0 / .40) 28%,
+      rgb(0 0 0 / .75) 50%,
+      rgb(0 0 0 / .86) 68%,
+      rgb(0 0 0 / .90) 84%,
+      rgb(0 0 0 / .90) 100%
+    );
+  }
+
+  .ts-manufacture__chapter--image-right::after {
+    background: linear-gradient(
+      90deg,
+      rgb(0 0 0 / .90) 0%,
+      rgb(0 0 0 / .90) 16%,
+      rgb(0 0 0 / .86) 32%,
+      rgb(0 0 0 / .75) 50%,
+      rgb(0 0 0 / .40) 72%,
+      rgb(0 0 0 / .15) 88%,
+      rgb(0 0 0 / 0) 100%
+    );
+  }
+
+  @media (hover: hover) {
+    .ts-manufacture__chapter:hover .ts-manufacture__chapter-image {
+      transform: scale(1.018);
+    }
+  }
+
+  /* Text overlays exactly half of the chapter. */
+  .ts-manufacture__chapter-copy {
+    position: relative;
+    z-index: 2;
+    display: flex;
+    width: 50%;
+    min-height: clamp(620px, 74svh, 900px);
+    align-items: center;
+    background: transparent;
+    color: #fff;
+  }
+
+  .ts-manufacture__chapter--image-left .ts-manufacture__chapter-copy {
+    margin-left: 50%;
+  }
+
+  .ts-manufacture__chapter--image-right .ts-manufacture__chapter-copy {
+    margin-right: 50%;
+  }
+
+  .ts-manufacture__chapter-copy-inner {
+    width: 100%;
+    max-width: 720px;
+    padding: clamp(42px, 5vw, 92px) clamp(34px, 4vw, 72px);
+  }
+
+  .ts-manufacture__chapter--image-left .ts-manufacture__chapter-copy-inner {
+    margin-right: auto;
+  }
+
+  .ts-manufacture__chapter--image-right .ts-manufacture__chapter-copy-inner {
+    margin-left: auto;
+  }
+
+  .ts-manufacture__chapter-number {
+    margin-bottom: clamp(42px, 7vh, 86px);
+    font-size: .68rem;
+    font-weight: 600;
+    letter-spacing: .18em;
+    opacity: .5;
+  }
+
+  .ts-manufacture__chapter-overline {
+    margin-bottom: 14px;
+    opacity: .75;
+  }
+
+  .ts-manufacture__chapter-heading {
+    margin: 0;
+    font-family: var(--font-heading--family, serif);
+    font-style: var(--font-heading--style, normal);
+    font-weight: var(--font-heading--weight, 400);
+    font-size: clamp(2.1rem, 3.2vw, 4.2rem);
+    line-height: .98;
+    letter-spacing: -.025em;
+    color: inherit;
+  }
+
+  .ts-manufacture__chapter-text {
+    margin-top: 28px;
+    font-size: clamp(.9rem, 1vw, 1.05rem);
+    line-height: 1.72;
+    color: inherit;
+  }
+
+  .ts-manufacture__chapter-text p {
+    margin-block: 0 1em;
+  }
+
+  .ts-manufacture__chapter-text p:last-child {
+    margin-bottom: 0;
+  }
+
+  .ts-manufacture__chapter-link {
+    display: inline-flex;
+    gap: 9px;
+    margin-top: 30px;
+    color: inherit;
+    font-size: .72rem;
+    font-weight: 600;
+    letter-spacing: .11em;
+    text-decoration: none;
+    text-transform: uppercase;
+  }
+
+
+  /* Scroll reveal: text enters from the side where it lives. */
+  .ts-manufacture__reveal {
+    opacity: 0;
+    transition:
+      transform 900ms cubic-bezier(.22, 1, .36, 1),
+      opacity 780ms ease;
+    will-change: transform, opacity;
+  }
+
+  .ts-manufacture__chapter--image-left .ts-manufacture__reveal {
+    transform: translateX(64px);
+  }
+
+  .ts-manufacture__chapter--image-right .ts-manufacture__reveal {
+    transform: translateX(-64px);
+  }
+
+  .ts-manufacture__chapter.is-in-view .ts-manufacture__reveal {
+    opacity: 1;
+    transform: translateX(0);
+  }
+
+  .ts-manufacture__reveal--1 { transition-delay: 20ms; }
+  .ts-manufacture__reveal--2 { transition-delay: 90ms; }
+  .ts-manufacture__reveal--3 { transition-delay: 160ms; }
+  .ts-manufacture__reveal--4 { transition-delay: 260ms; }
+  .ts-manufacture__reveal--5 { transition-delay: 340ms; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .ts-manufacture__reveal {
+      opacity: 1;
+      transform: none !important;
+      transition: none;
+    }
+  }
+
+  @media screen and (max-width: 989px) {
+    .ts-manufacture__hero {
+      height: 33svh;
+      min-height: 33svh;
+    }
+
+    .ts-manufacture__chapter,
+    .ts-manufacture__chapter-copy {
+      min-height: 600px;
+    }
+
+    .ts-manufacture__chapter-copy-inner {
+      padding: 38px 28px;
+    }
+
+    .ts-manufacture__chapter-number {
+      margin-bottom: 36px;
+    }
+  }
+
+  @media screen and (max-width: 749px) {
+    .ts-manufacture__chapter--image-left .ts-manufacture__reveal {
+      transform: translateX(28px);
+    }
+
+    .ts-manufacture__chapter--image-right .ts-manufacture__reveal {
+      transform: translateX(-28px);
+    }
+
+    .ts-manufacture__chapter.is-in-view .ts-manufacture__reveal {
+      transform: translateX(0);
+    }
+
+    .ts-manufacture__hero {
+      height: 33svh;
+      min-height: 33svh;
+    }
+
+    .ts-manufacture__hero-content {
+      width: calc(100% - 40px);
+      padding-block: 40px;
+    }
+
+    .ts-manufacture__hero-content--left,
+    .ts-manufacture__hero-content--right {
+      margin-inline: 20px;
+      text-align: left;
+    }
+
+    .ts-manufacture__hero-content--right .ts-manufacture__hero-text {
+      margin-left: 0;
+    }
+
+    .ts-manufacture__hero-text {
+      margin-top: 16px;
+    }
+
+    .ts-manufacture__scroll-hint {
+      bottom: 12px;
+    }
+
+    /* On mobile the same full-bleed image remains, with a vertical fade for readability. */
+    .ts-manufacture__chapter,
+    .ts-manufacture__chapter-copy {
+      min-height: 78svh;
+    }
+
+    .ts-manufacture__chapter::after,
+    .ts-manufacture__chapter--image-left::after,
+    .ts-manufacture__chapter--image-right::after {
+      background: linear-gradient(
+        180deg,
+        rgb(0 0 0 / 0) 0%,
+        rgb(0 0 0 / .25) 28%,
+        rgb(0 0 0 / .75) 50%,
+        rgb(0 0 0 / .88) 70%,
+        rgb(0 0 0 / .90) 100%
+      );
+    }
+
+    .ts-manufacture__chapter-copy,
+    .ts-manufacture__chapter--image-left .ts-manufacture__chapter-copy,
+    .ts-manufacture__chapter--image-right .ts-manufacture__chapter-copy {
+      width: 100%;
+      min-height: 78svh;
+      margin: 0;
+      align-items: flex-end;
+    }
+
+    .ts-manufacture__chapter-copy-inner {
+      max-width: none;
+      padding: 42px 24px 48px;
+    }
+
+    .ts-manufacture__chapter-number {
+      margin-bottom: 22px;
+    }
+
+    .ts-manufacture__chapter-heading {
+      font-size: clamp(2.25rem, 10.5vw, 3.5rem);
+    }
+
+    .ts-manufacture__chapter-text {
+      margin-top: 20px;
+      font-size: .94rem;
+      line-height: 1.65;
+    }
+  }
+{% endstylesheet %}
+
+
+<script>
+  (() => {
+    const root = document.getElementById('TSManufacture-{{ section.id }}');
+    if (!root || root.dataset.revealReady === 'true') return;
+    root.dataset.revealReady = 'true';
+
+    const chapters = [...root.querySelectorAll('.js-ts-manufacture-chapter')];
+
+    if (!('IntersectionObserver' in window)) {
+      chapters.forEach((chapter) => chapter.classList.add('is-in-view'));
+      return;
+    }
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (!entry.isIntersecting) return;
+          entry.target.classList.add('is-in-view');
+          observer.unobserve(entry.target);
+        });
+      },
+      {
+        threshold: 0.16,
+        rootMargin: '0px 0px -8% 0px'
+      }
+    );
+
+    chapters.forEach((chapter) => observer.observe(chapter));
+  })();
+</script>
+
+{% schema %}
+{
+  "name": "TS – Die Manufaktur",
+  "tag": "section",
+  "class": "section-ts-manufacture",
+  "settings": [
+    {
+      "type": "header",
+      "content": "Zentrale Inhalte"
+    },
+    {
+      "type": "paragraph",
+      "content": "Die Kapitel werden automatisch aus Inhalt > Metaobjekte > Manufaktur übernommen. Die bisherigen Blocks dienen nur als Fallback, solange noch keine zentralen Metaobjekte angelegt sind."
+    },
+    {
+      "type": "header",
+      "content": "Landing"
+    },
+    {
+      "type": "image_picker",
+      "id": "hero_image",
+      "label": "Hero Bild"
+    },
+    {
+      "type": "image_picker",
+      "id": "hero_mobile_image",
+      "label": "Hero Bild Mobil"
+    },
+    {
+      "type": "video",
+      "id": "hero_video",
+      "label": "Hero Video (optional, überschreibt Bild)"
+    },
+    {
+      "type": "range",
+      "id": "hero_overlay",
+      "label": "Abdunklung",
+      "min": 0,
+      "max": 80,
+      "step": 5,
+      "unit": "%",
+      "default": 30
+    },
+    {
+      "type": "text",
+      "id": "hero_overline",
+      "label": "Kleine Überschrift",
+      "default": "TOM SCHILLER"
+    },
+    {
+      "type": "text",
+      "id": "hero_heading",
+      "label": "Titel",
+      "default": "Die Manufaktur"
+    },
+    {
+      "type": "richtext",
+      "id": "hero_text",
+      "label": "Einleitung",
+      "default": "<p>Zwischen Idee, Material und Zeit entsteht Parfum mit Charakter.</p>"
+    },
+    {
+      "type": "header",
+      "content": "Landing – Schriftgrößen"
+    },
+    {
+      "type": "range",
+      "id": "hero_overline_size",
+      "label": "Kleine Überschrift – Schriftgröße",
+      "min": 8,
+      "max": 32,
+      "step": 1,
+      "unit": "px",
+      "default": 12
+    },
+    {
+      "type": "range",
+      "id": "hero_heading_size",
+      "label": "Titel – Schriftgröße",
+      "min": 32,
+      "max": 160,
+      "step": 2,
+      "unit": "px",
+      "default": 88
+    },
+    {
+      "type": "range",
+      "id": "hero_text_size",
+      "label": "Einleitung – Schriftgröße",
+      "min": 10,
+      "max": 40,
+      "step": 1,
+      "unit": "px",
+      "default": 18
+    },
+    {
+      "type": "select",
+      "id": "hero_text_alignment",
+      "label": "Textausrichtung",
+      "options": [
+        {
+          "value": "left",
+          "label": "Links"
+        },
+        {
+          "value": "center",
+          "label": "Mitte"
+        },
+        {
+          "value": "right",
+          "label": "Rechts"
+        }
+      ],
+      "default": "center"
+    },
+    {
+      "type": "checkbox",
+      "id": "show_scroll_hint",
+      "label": "Scroll Hinweis anzeigen",
+      "default": true
+    },
+    {
+      "type": "text",
+      "id": "scroll_hint_text",
+      "label": "Scroll Hinweis Text",
+      "default": "Entdecken"
+    },
+    {
+      "type": "checkbox",
+      "id": "show_numbers",
+      "label": "Kapitelnummern anzeigen",
+      "default": true
+    }
+  ],
+  "blocks": [
+    {
+      "type": "chapter",
+      "name": "Inhaltsabschnitt",
+      "settings": [
+        {
+          "type": "image_picker",
+          "id": "image",
+          "label": "Bild"
+        },
+        {
+          "type": "image_picker",
+          "id": "mobile_image",
+          "label": "Bild Mobil (optional)"
+        },
+        {
+          "type": "select",
+          "id": "image_side",
+          "label": "Bildseite Desktop",
+          "options": [
+            {
+              "value": "auto",
+              "label": "Automatisch alternierend"
+            },
+            {
+              "value": "left",
+              "label": "Links"
+            },
+            {
+              "value": "right",
+              "label": "Rechts"
+            }
+          ],
+          "default": "auto"
+        },
+        {
+          "type": "select",
+          "id": "image_position",
+          "label": "Bildposition",
+          "options": [
+            {
+              "value": "left center",
+              "label": "Links"
+            },
+            {
+              "value": "center center",
+              "label": "Mitte"
+            },
+            {
+              "value": "right center",
+              "label": "Rechts"
+            },
+            {
+              "value": "center top",
+              "label": "Oben"
+            },
+            {
+              "value": "center bottom",
+              "label": "Unten"
+            }
+          ],
+          "default": "center center"
+        },
+        {
+          "type": "text",
+          "id": "overline",
+          "label": "Kleine Überschrift"
+        },
+        {
+          "type": "text",
+          "id": "heading",
+          "label": "Überschrift"
+        },
+        {
+          "type": "richtext",
+          "id": "text",
+          "label": "Text"
+        },
+        {
+          "type": "color",
+          "id": "background",
+          "label": "Textfeld Hintergrund",
+          "default": "#f7f1dc"
+        },
+        {
+          "type": "color",
+          "id": "text_color",
+          "label": "Textfarbe",
+          "default": "#111111"
+        },
+        {
+          "type": "text",
+          "id": "link_label",
+          "label": "Linktext (optional)"
+        },
+        {
+          "type": "url",
+          "id": "link",
+          "label": "Link (optional)"
+        }
+      ]
+    }
+  ],
+  "presets": [
+    {
+      "name": "TS – Die Manufaktur",
+      "blocks": [
+        {
+          "type": "chapter",
+          "settings": {
+            "overline": "01 · DIE VISION",
+            "heading": "Parfum als Luxusprodukt",
+            "text": "<p>Parfum ist für Tom Schiller kein beiläufiges Accessoire, sondern ein vollständiges Luxusprodukt. Duft, Material, Haptik und Präsentation werden als Einheit gedacht.</p><p>Charakterstarke Kompositionen, hochwertige Verpackungen, kontrollierte Qualität und handwerkliche Arbeit bilden den Anspruch hinter jedem Produkt.</p>"
+          }
+        },
+        {
+          "type": "chapter",
+          "settings": {
+            "overline": "02 · MADE IN GERMANY",
+            "heading": "Entwicklung und Handwerk im Haus",
+            "text": "<p>Entwicklung, Herstellung, Abfüllung, Qualitätskontrolle und Vertrieb werden bewusst eng zusammengeführt. So bleibt die Kontrolle über Produkt, Verarbeitung und Weiterentwicklung in einer Hand.</p><p>Manuelle Arbeitsschritte und kontrollierte Chargen stehen dabei bewusst im Gegensatz zu anonymer Massenproduktion.</p>"
+          }
+        },
+        {
+          "type": "chapter",
+          "settings": {
+            "overline": "03 · KONZENTRATION",
+            "heading": "Extrait de Parfum",
+            "text": "<p>Ein Extrait de Parfum setzt auf eine hohe Duftkonzentration und eine dichte, körperreiche Wirkung. Entscheidend ist dabei nicht reine Lautstärke, sondern die Art, wie sich eine Komposition auf der Haut entfaltet.</p><p>Tiefe, Präsenz und ein langer Verlauf geben den einzelnen Materialien mehr Raum.</p>"
+          }
+        },
+        {
+          "type": "chapter",
+          "settings": {
+            "overline": "04 · ZEIT",
+            "heading": "Reifung ist Teil der Komposition",
+            "text": "<p>Mit dem Mischen ist ein Parfum nicht fertig. Während Mazeration und Nachreife verbinden sich die Bestandteile weiter, Kanten werden ruhiger und die Komposition gewinnt an Geschlossenheit.</p><p>Zeit wird damit selbst zu einem Bestandteil des Herstellungsprozesses.</p>"
+          }
+        },
+        {
+          "type": "chapter",
+          "settings": {
+            "overline": "05 · DUFTARCHITEKTUR",
+            "heading": "Ein Duft lebt in Bewegung",
+            "text": "<p>Duftstoffe besitzen unterschiedliche Flüchtigkeit, Intensität und Dauer. Manche eröffnen eine Komposition, andere prägen ihr Herz oder bleiben über viele Stunden auf der Haut.</p><p>So entsteht kein statisches Bild, sondern ein Verlauf, der sich mit der Zeit verändert.</p>"
+          }
+        },
+        {
+          "type": "chapter",
+          "settings": {
+            "overline": "06 · MATERIALIEN",
+            "heading": "Rohstoffe und moderne Duftmoleküle",
+            "text": "<p>Natürliche Rohstoffe und moderne Duftmoleküle sind kein Widerspruch. Rose, Hölzer, Harze, Vetiver oder Zitrusmaterialien können mit zeitgenössischen Molekülen verbunden werden, um Präzision, Haltbarkeit und neue olfaktorische Effekte zu schaffen.</p>"
+          }
+        },
+        {
+          "type": "chapter",
+          "settings": {
+            "overline": "07 · PRÄSENTATION",
+            "heading": "Der Flakon ist Teil des Parfums",
+            "text": "<p>Luxus endet nicht mit dem Duft selbst. Gewicht, Glas, Metall, Verschluss, Etikett, Box und das Öffnungserlebnis bestimmen, wie ein Produkt wahrgenommen wird.</p><p>Deshalb wird die Präsentation bei Tom Schiller als Teil der Komposition verstanden – nicht als nachträgliche Verpackung.</p>"
+          }
+        }
+      ]
+    }
+  ]
+}
+{% endschema %}

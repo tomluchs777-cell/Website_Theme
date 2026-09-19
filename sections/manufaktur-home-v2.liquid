@@ -1,0 +1,1082 @@
+{% liquid
+  # Same central source as the full Manufaktur page.
+  assign ts_manufaktur_source = metaobjects.manufaktur_inhalt.manufaktur
+  assign ts_manufaktur_entries = blank
+
+  if ts_manufaktur_source != blank and ts_manufaktur_source.sections != blank
+    assign ts_manufaktur_entries = ts_manufaktur_source.sections.value
+    assign slide_count = ts_manufaktur_entries.size
+  else
+    assign slide_count = section.blocks.size
+  endif
+%}
+
+<section
+  id="TSManufacturePreview-{{ section.id }}"
+  class="ts-manufacture-preview"
+  style="
+    --ts-preview-frame: 0px;
+  "
+>
+  <div class="ts-manufacture-preview__frame">
+    <div class="ts-manufacture-preview__viewport" data-ts-manufacture-slider>
+      <div class="ts-manufacture-preview__slides">
+        {% if ts_manufaktur_entries != blank %}
+          {% for item in ts_manufaktur_entries %}
+            {% liquid
+              assign image_side = item.image_side.value | default: 'auto'
+              if image_side == 'auto'
+                assign remainder = forloop.index | modulo: 2
+                if remainder == 1
+                  assign image_side = 'left'
+                else
+                  assign image_side = 'right'
+                endif
+              endif
+
+              assign slide_image = item.image.value
+              assign mobile_image = item.mobile_image.value | default: slide_image
+              assign image_position = item.image_position.value | default: 'center center'
+              assign overline = item.overline.value
+              assign heading = item.heading.value | default: item.name.value
+            %}
+
+            <article
+              class="ts-manufacture-preview__slide ts-manufacture-preview__slide--image-{{ image_side }}{% if forloop.first %} is-active{% endif %}"
+              style="--ts-image-position: {{ image_position }};"
+              data-ts-manufacture-slide
+              data-index="{{ forloop.index0 }}"
+              data-manufaktur-handle="{{ item.system.handle }}"
+              {% unless forloop.first %}hidden aria-hidden="true"{% else %}aria-hidden="false"{% endunless %}
+            >
+              <div class="ts-manufacture-preview__media">
+                {% if slide_image != blank %}
+                  <picture>
+                    {% if mobile_image != blank %}
+                      <source
+                        media="(max-width: 749px)"
+                        srcset="{{ mobile_image | image_url: width: 1100 }}"
+                      >
+                    {% endif %}
+                    {{
+                      slide_image
+                      | image_url: width: 2200
+                      | image_tag:
+                        class: 'ts-manufacture-preview__image',
+                        widths: '700, 1000, 1400, 1800, 2200',
+                        sizes: '100vw',
+                        loading: 'lazy',
+                        alt: heading
+                    }}
+                  </picture>
+                {% else %}
+                  {{ 'lifestyle-2' | placeholder_svg_tag: 'ts-manufacture-preview__placeholder' }}
+                {% endif %}
+              </div>
+
+              <div class="ts-manufacture-preview__gradient" aria-hidden="true"></div>
+
+              <div class="ts-manufacture-preview__copy">
+                <div class="ts-manufacture-preview__copy-inner">
+                  {% if overline != blank %}
+                    <div class="ts-manufacture-preview__overline">{{ overline }}</div>
+                  {% endif %}
+
+                  {% if heading != blank %}
+                    <h2 class="ts-manufacture-preview__heading">{{ heading }}</h2>
+                  {% endif %}
+
+                  {% if item.text != blank %}
+                    <div class="ts-manufacture-preview__text rte">
+                      {{ item.text | metafield_tag }}
+                    </div>
+                  {% endif %}
+                </div>
+              </div>
+            </article>
+          {% endfor %}
+        {% else %}
+        {% for block in section.blocks %}
+          {% liquid
+            assign image_side = block.settings.image_side
+            if image_side == 'auto'
+              assign remainder = forloop.index | modulo: 2
+              if remainder == 1
+                assign image_side = 'left'
+              else
+                assign image_side = 'right'
+              endif
+            endif
+
+            assign slide_image = block.settings.image
+            assign mobile_image = block.settings.mobile_image | default: slide_image
+          %}
+
+          <article
+            class="ts-manufacture-preview__slide ts-manufacture-preview__slide--image-{{ image_side }}{% if forloop.first %} is-active{% endif %}"
+            style="--ts-image-position: {{ block.settings.image_position | default: 'center center' }};"
+            data-ts-manufacture-slide
+            data-index="{{ forloop.index0 }}"
+            {% unless forloop.first %}hidden aria-hidden="true"{% else %}aria-hidden="false"{% endunless %}
+            {{ block.shopify_attributes }}
+          >
+            <div class="ts-manufacture-preview__media">
+              {% if slide_image != blank %}
+                <picture>
+                  {% if mobile_image != blank %}
+                    <source
+                      media="(max-width: 749px)"
+                      srcset="{{ mobile_image | image_url: width: 1100 }}"
+                    >
+                  {% endif %}
+                  {{
+                    slide_image
+                    | image_url: width: 2200
+                    | image_tag:
+                      class: 'ts-manufacture-preview__image',
+                      widths: '700, 1000, 1400, 1800, 2200',
+                      sizes: '100vw',
+                      loading: 'lazy',
+                      alt: block.settings.heading
+                  }}
+                </picture>
+              {% else %}
+                {{ 'lifestyle-2' | placeholder_svg_tag: 'ts-manufacture-preview__placeholder' }}
+              {% endif %}
+            </div>
+
+            <div class="ts-manufacture-preview__gradient" aria-hidden="true"></div>
+
+            <div class="ts-manufacture-preview__copy">
+              <div class="ts-manufacture-preview__copy-inner">
+                {% if block.settings.overline != blank %}
+                  <div class="ts-manufacture-preview__overline">{{ block.settings.overline }}</div>
+                {% endif %}
+
+                {% if block.settings.heading != blank %}
+                  <h2 class="ts-manufacture-preview__heading">{{ block.settings.heading }}</h2>
+                {% endif %}
+
+                {% if block.settings.text != blank %}
+                  <div class="ts-manufacture-preview__text rte">{{ block.settings.text }}</div>
+                {% endif %}
+              </div>
+            </div>
+          </article>
+        {% endfor %}
+        {% endif %}
+      </div>
+
+      {% if slide_count > 1 %}
+        <button
+          type="button"
+          class="ts-manufacture-preview__arrow ts-manufacture-preview__arrow--prev"
+          aria-label="Vorheriger Manufaktur-Abschnitt"
+          data-ts-manufacture-prev
+        >
+          <span aria-hidden="true"></span>
+        </button>
+
+        <button
+          type="button"
+          class="ts-manufacture-preview__arrow ts-manufacture-preview__arrow--next"
+          aria-label="Nächster Manufaktur-Abschnitt"
+          data-ts-manufacture-next
+        >
+          <span aria-hidden="true"></span>
+        </button>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="ts-manufacture-preview__cta-bridge">
+    {% if section.settings.manufacture_link != blank %}
+      <a class="ts-manufacture-preview__bar" href="{{ section.settings.manufacture_link }}">
+        {{ section.settings.bar_text }}
+        {% if section.settings.show_bar_arrow %}
+          <span aria-hidden="true">→</span>
+        {% endif %}
+      </a>
+    {% else %}
+      <div class="ts-manufacture-preview__bar">
+        {{ section.settings.bar_text }}
+        {% if section.settings.show_bar_arrow %}
+          <span aria-hidden="true">→</span>
+        {% endif %}
+      </div>
+    {% endif %}
+  </div>
+</section>
+
+{% stylesheet %}
+  .ts-manufacture-preview {
+    width: 100%;
+    background: #000;
+    color: #fff;
+    overflow: hidden;
+  }
+
+  /*
+    Exactly the same outer black spacing as the current
+    Manufaktur page: chapter_frame_size = 24px.
+  */
+  .ts-manufacture-preview__frame {
+    width: 100%;
+    padding: 0;
+    background: #000;
+    box-sizing: border-box;
+  }
+
+  .ts-manufacture-preview__viewport {
+    position: relative;
+    width: 100%;
+    height: var(--ts-preview-equal-height, auto);
+    min-height: var(--ts-preview-equal-height, clamp(620px, 74svh, 900px));
+    overflow: hidden;
+    background: #000;
+    touch-action: pan-y;
+  }
+
+  .ts-manufacture-preview__slides {
+    width: 100%;
+  }
+
+  .ts-manufacture-preview__slide {
+    position: relative;
+    display: block;
+    width: 100%;
+    height: var(--ts-preview-equal-height, auto);
+    margin: 0;
+    min-height: var(--ts-preview-equal-height, clamp(620px, 74svh, 900px));
+    overflow: hidden;
+    isolation: isolate;
+    background: #000;
+    color: #fff;
+  }
+
+  .ts-manufacture-preview__slide[hidden] {
+    display: none !important;
+  }
+
+  /* Same full-bleed image treatment as the Manufaktur page. */
+  .ts-manufacture-preview__media {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    background: #000;
+  }
+
+  .ts-manufacture-preview__media picture,
+  .ts-manufacture-preview__image,
+  .ts-manufacture-preview__placeholder {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+  }
+
+  .ts-manufacture-preview__image {
+    object-fit: cover;
+    object-position: var(--ts-image-position, center);
+    transition: transform 1.2s cubic-bezier(.22, 1, .36, 1);
+  }
+
+  .ts-manufacture-preview__placeholder {
+    fill: #555;
+    background: #222;
+  }
+
+  /* Exact same blackout gradient as the Manufaktur chapters. */
+  .ts-manufacture-preview__gradient {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    pointer-events: none;
+  }
+
+  .ts-manufacture-preview__slide--image-left .ts-manufacture-preview__gradient {
+    background: linear-gradient(
+      90deg,
+      rgb(0 0 0 / 0) 0%,
+      rgb(0 0 0 / .15) 12%,
+      rgb(0 0 0 / .40) 28%,
+      rgb(0 0 0 / .75) 50%,
+      rgb(0 0 0 / .86) 68%,
+      rgb(0 0 0 / .90) 84%,
+      rgb(0 0 0 / .90) 100%
+    );
+  }
+
+  .ts-manufacture-preview__slide--image-right .ts-manufacture-preview__gradient {
+    background: linear-gradient(
+      90deg,
+      rgb(0 0 0 / .90) 0%,
+      rgb(0 0 0 / .90) 16%,
+      rgb(0 0 0 / .86) 32%,
+      rgb(0 0 0 / .75) 50%,
+      rgb(0 0 0 / .40) 72%,
+      rgb(0 0 0 / .15) 88%,
+      rgb(0 0 0 / 0) 100%
+    );
+  }
+
+  @media (hover: hover) {
+    .ts-manufacture-preview__slide:hover .ts-manufacture-preview__image {
+      transform: scale(1.018);
+    }
+  }
+
+  /* Exact same 50% copy layout as the Manufaktur page. */
+  .ts-manufacture-preview__copy {
+    position: relative;
+    z-index: 2;
+    display: flex;
+    width: 50%;
+    height: var(--ts-preview-equal-height, auto);
+    min-height: var(--ts-preview-equal-height, clamp(620px, 74svh, 900px));
+    align-items: center;
+    background: transparent;
+    color: #fff;
+  }
+
+  .ts-manufacture-preview__slide--image-left .ts-manufacture-preview__copy {
+    margin-left: 50%;
+  }
+
+  .ts-manufacture-preview__slide--image-right .ts-manufacture-preview__copy {
+    margin-right: 50%;
+  }
+
+  .ts-manufacture-preview__copy-inner {
+    width: 100%;
+    max-width: 720px;
+    padding: clamp(42px, 5vw, 92px) clamp(34px, 4vw, 72px);
+    box-sizing: border-box;
+  }
+
+  .ts-manufacture-preview__slide--image-left .ts-manufacture-preview__copy-inner {
+    margin-right: auto;
+  }
+
+  .ts-manufacture-preview__slide--image-right .ts-manufacture-preview__copy-inner {
+    margin-left: auto;
+  }
+
+  /* Typography copied 1:1 from the Manufaktur page. */
+  .ts-manufacture-preview__overline {
+    margin-bottom: 14px;
+    font-size: .72rem;
+    font-weight: 600;
+    letter-spacing: .18em;
+    text-transform: uppercase;
+    opacity: .75;
+  }
+
+  .ts-manufacture-preview__heading {
+    margin: 0;
+    font-family: var(--font-heading--family, serif);
+    font-style: var(--font-heading--style, normal);
+    font-weight: var(--font-heading--weight, 400);
+    font-size: clamp(2.1rem, 3.2vw, 4.2rem);
+    line-height: .98;
+    letter-spacing: -.025em;
+    color: inherit;
+  }
+
+  .ts-manufacture-preview__text {
+    margin-top: 28px;
+    font-size: clamp(.9rem, 1vw, 1.05rem);
+    line-height: 1.72;
+    color: inherit;
+  }
+
+  .ts-manufacture-preview__text p {
+    margin-block: 0 1em;
+  }
+
+  .ts-manufacture-preview__text p:last-child {
+    margin-bottom: 0;
+  }
+
+  /* Same reveal distance, duration and stagger as the Manufaktur page. */
+  .ts-manufacture-preview__overline,
+  .ts-manufacture-preview__heading,
+  .ts-manufacture-preview__text {
+    opacity: 0;
+    transition:
+      transform 900ms cubic-bezier(.22, 1, .36, 1),
+      opacity 780ms ease;
+    will-change: transform, opacity;
+  }
+
+  .ts-manufacture-preview__slide--image-left .ts-manufacture-preview__overline,
+  .ts-manufacture-preview__slide--image-left .ts-manufacture-preview__heading,
+  .ts-manufacture-preview__slide--image-left .ts-manufacture-preview__text {
+    transform: translateX(64px);
+  }
+
+  .ts-manufacture-preview__slide--image-right .ts-manufacture-preview__overline,
+  .ts-manufacture-preview__slide--image-right .ts-manufacture-preview__heading,
+  .ts-manufacture-preview__slide--image-right .ts-manufacture-preview__text {
+    transform: translateX(-64px);
+  }
+
+  .ts-manufacture-preview.is-in-view
+  .ts-manufacture-preview__slide.is-active
+  .ts-manufacture-preview__overline,
+  .ts-manufacture-preview.is-in-view
+  .ts-manufacture-preview__slide.is-active
+  .ts-manufacture-preview__heading,
+  .ts-manufacture-preview.is-in-view
+  .ts-manufacture-preview__slide.is-active
+  .ts-manufacture-preview__text {
+    opacity: 1;
+    transform: translateX(0);
+  }
+
+  .ts-manufacture-preview.is-in-view
+  .ts-manufacture-preview__slide.is-active
+  .ts-manufacture-preview__overline {
+    transition-delay: 90ms;
+  }
+
+  .ts-manufacture-preview.is-in-view
+  .ts-manufacture-preview__slide.is-active
+  .ts-manufacture-preview__heading {
+    transition-delay: 160ms;
+  }
+
+  .ts-manufacture-preview.is-in-view
+  .ts-manufacture-preview__slide.is-active
+  .ts-manufacture-preview__text {
+    transition-delay: 260ms;
+  }
+
+  /* Pfeile 1:1 im Stil der mobilen Duftgalaxie. */
+  .ts-manufacture-preview__arrow {
+    position: absolute;
+    z-index: 8;
+    top: 50%;
+    display: flex;
+    width: 44px;
+    height: 54px;
+    padding: 0;
+    align-items: center;
+    justify-content: center;
+    border: 0;
+    background: transparent;
+    color: #ffffff;
+    cursor: pointer;
+    transform: translateY(-50%);
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .ts-manufacture-preview__arrow--prev {
+    left: 7px;
+  }
+
+  .ts-manufacture-preview__arrow--next {
+    right: 7px;
+  }
+
+  .ts-manufacture-preview__arrow span {
+    display: block;
+    width: 16px;
+    height: 16px;
+    border-bottom: 2px solid currentColor;
+    border-left: 2px solid currentColor;
+    filter: drop-shadow(0 1px 2px rgba(0, 0, 0, .65));
+  }
+
+  .ts-manufacture-preview__arrow--prev span {
+    transform: rotate(45deg);
+  }
+
+  .ts-manufacture-preview__arrow--next span {
+    transform: rotate(225deg);
+  }
+
+  .ts-manufacture-preview__arrow:focus-visible {
+    outline: 1px solid currentColor;
+    outline-offset: -5px;
+    border-radius: 999px;
+  }
+
+  /* CTA 1:1 nach Duftgalaxie. */
+  .ts-manufacture-preview__cta-bridge {
+    display: flex;
+    width: 100%;
+    height: clamp(96px, 8vw, 138px);
+    align-items: center;
+    justify-content: center;
+    background: #000000;
+  }
+
+  .ts-manufacture-preview__bar {
+    display: inline-flex;
+    gap: .75rem;
+    align-items: center;
+    color: #ffffff;
+    font-size: .92rem;
+    font-weight: 600;
+    letter-spacing: .1em;
+    text-decoration: none;
+    text-transform: uppercase;
+  }
+
+  .ts-manufacture-preview__bar span {
+    transition: transform .25s ease;
+  }
+
+  .ts-manufacture-preview__bar:hover span {
+    transform: translateX(5px);
+  }
+
+  @media screen and (max-width: 989px) {
+    .ts-manufacture-preview__slide,
+    .ts-manufacture-preview__copy {
+      min-height: 600px;
+    }
+
+    .ts-manufacture-preview__copy-inner {
+      padding: 38px 28px;
+    }
+  }
+
+  @media screen and (max-width: 749px) {
+    .ts-manufacture-preview__slide--image-left .ts-manufacture-preview__overline,
+    .ts-manufacture-preview__slide--image-left .ts-manufacture-preview__heading,
+    .ts-manufacture-preview__slide--image-left .ts-manufacture-preview__text {
+      transform: translateX(28px);
+    }
+
+    .ts-manufacture-preview__slide--image-right .ts-manufacture-preview__overline,
+    .ts-manufacture-preview__slide--image-right .ts-manufacture-preview__heading,
+    .ts-manufacture-preview__slide--image-right .ts-manufacture-preview__text {
+      transform: translateX(-28px);
+    }
+
+    .ts-manufacture-preview.is-in-view
+    .ts-manufacture-preview__slide.is-active
+    .ts-manufacture-preview__overline,
+    .ts-manufacture-preview.is-in-view
+    .ts-manufacture-preview__slide.is-active
+    .ts-manufacture-preview__heading,
+    .ts-manufacture-preview.is-in-view
+    .ts-manufacture-preview__slide.is-active
+    .ts-manufacture-preview__text {
+      transform: translateX(0);
+    }
+
+    .ts-manufacture-preview__viewport,
+    .ts-manufacture-preview__slide,
+    .ts-manufacture-preview__copy {
+      min-height: var(--ts-preview-equal-height, 78svh);
+    }
+
+    .ts-manufacture-preview__gradient,
+    .ts-manufacture-preview__slide--image-left .ts-manufacture-preview__gradient,
+    .ts-manufacture-preview__slide--image-right .ts-manufacture-preview__gradient {
+      background: linear-gradient(
+        180deg,
+        rgb(0 0 0 / 0) 0%,
+        rgb(0 0 0 / .25) 28%,
+        rgb(0 0 0 / .75) 50%,
+        rgb(0 0 0 / .88) 70%,
+        rgb(0 0 0 / .90) 100%
+      );
+    }
+
+    .ts-manufacture-preview__copy,
+    .ts-manufacture-preview__slide--image-left .ts-manufacture-preview__copy,
+    .ts-manufacture-preview__slide--image-right .ts-manufacture-preview__copy {
+      width: 100%;
+      margin: 0;
+      align-items: flex-end;
+    }
+
+    .ts-manufacture-preview__copy-inner {
+      max-width: none;
+      padding: 42px 24px 48px;
+    }
+
+    .ts-manufacture-preview__heading {
+      font-size: clamp(2.25rem, 10.5vw, 3.5rem);
+    }
+
+    .ts-manufacture-preview__text {
+      margin-top: 20px;
+      font-size: .94rem;
+      line-height: 1.65;
+    }
+
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .ts-manufacture-preview__overline,
+    .ts-manufacture-preview__heading,
+    .ts-manufacture-preview__text {
+      opacity: 1 !important;
+      transform: none !important;
+      transition: none !important;
+    }
+  }
+{% endstylesheet %}
+
+<script>
+  (() => {
+    const root = document.getElementById('TSManufacturePreview-{{ section.id }}');
+    if (!root || root.dataset.sliderReady === 'true') return;
+    root.dataset.sliderReady = 'true';
+
+    const slider = root.querySelector('[data-ts-manufacture-slider]');
+    const slides = [...root.querySelectorAll('[data-ts-manufacture-slide]')];
+    const prev = root.querySelector('[data-ts-manufacture-prev]');
+    const next = root.querySelector('[data-ts-manufacture-next]');
+
+    if (!slider || slides.length < 1) return;
+
+    let index = 0;
+    let touchStartX = null;
+    let touchStartY = null;
+    let resizeTimer = null;
+    let switchToken = 0;
+
+    const preloadCache = new Map();
+    const preloadKeepAlive = [];
+
+    const getSlideImage = (slide) =>
+      slide?.querySelector('.ts-manufacture-preview__image') || null;
+
+    const getResponsiveSource = (slide) => {
+      const img = getSlideImage(slide);
+      if (!img) return null;
+
+      const picture = img.closest('picture');
+      const source = picture
+        ? [...picture.querySelectorAll('source')].find((item) => {
+            if (!item.media) return false;
+            try {
+              return window.matchMedia(item.media).matches;
+            } catch (error) {
+              return false;
+            }
+          })
+        : null;
+
+      return {
+        src: img.currentSrc || img.src || '',
+        srcset: source?.srcset || img.srcset || '',
+        sizes: source?.sizes || img.sizes || '100vw'
+      };
+    };
+
+    const ensureSlideReady = (slide, priority = 'auto') => {
+      if (!slide) return Promise.resolve();
+
+      const source = getResponsiveSource(slide);
+      if (!source || (!source.src && !source.srcset)) return Promise.resolve();
+
+      const cacheKey = `${source.src}|${source.srcset}|${source.sizes}`;
+      if (preloadCache.has(cacheKey)) return preloadCache.get(cacheKey);
+
+      const promise = new Promise((resolve) => {
+        const image = new Image();
+        image.decoding = 'async';
+
+        if ('fetchPriority' in image) {
+          image.fetchPriority = priority;
+        }
+
+        if (source.sizes) image.sizes = source.sizes;
+        if (source.srcset) image.srcset = source.srcset;
+        if (source.src) image.src = source.src;
+
+        let settled = false;
+        const finish = () => {
+          if (settled) return;
+          settled = true;
+
+          if (typeof image.decode === 'function') {
+            image.decode().catch(() => {}).finally(resolve);
+          } else {
+            resolve();
+          }
+        };
+
+        image.addEventListener('load', finish, { once: true });
+        image.addEventListener('error', finish, { once: true });
+
+        if (image.complete) finish();
+
+        preloadKeepAlive.push(image);
+      });
+
+      preloadCache.set(cacheKey, promise);
+      return promise;
+    };
+
+    const preloadAround = (activeIndex) => {
+      if (slides.length < 2) return;
+
+      const nextIndex = (activeIndex + 1) % slides.length;
+      const prevIndex = (activeIndex - 1 + slides.length) % slides.length;
+
+      ensureSlideReady(slides[nextIndex], 'high');
+      ensureSlideReady(slides[prevIndex], 'auto');
+    };
+
+    const equalizeSlideHeights = () => {
+      if (!slides.length) return;
+
+      /* Start from the same responsive minimum used by the Manufaktur page. */
+      root.style.removeProperty('--ts-preview-equal-height');
+
+      const minHeight = parseFloat(getComputedStyle(slider).minHeight) || 0;
+      const savedStates = slides.map((slide) => ({
+        hidden: slide.hidden,
+        ariaHidden: slide.getAttribute('aria-hidden'),
+        position: slide.style.position,
+        visibility: slide.style.visibility,
+        pointerEvents: slide.style.pointerEvents,
+        inset: slide.style.inset,
+        height: slide.style.height
+      }));
+
+      slides.forEach((slide) => {
+        slide.hidden = false;
+        slide.style.position = 'absolute';
+        slide.style.visibility = 'hidden';
+        slide.style.pointerEvents = 'none';
+        slide.style.inset = '0 0 auto 0';
+        slide.style.height = 'auto';
+      });
+
+      let tallest = minHeight;
+
+      slides.forEach((slide) => {
+        const inner = slide.querySelector('.ts-manufacture-preview__copy-inner');
+        if (!inner) return;
+        tallest = Math.max(tallest, inner.scrollHeight);
+      });
+
+      savedStates.forEach((state, slideIndex) => {
+        const slide = slides[slideIndex];
+        slide.hidden = state.hidden;
+
+        if (state.ariaHidden === null) {
+          slide.removeAttribute('aria-hidden');
+        } else {
+          slide.setAttribute('aria-hidden', state.ariaHidden);
+        }
+
+        slide.style.position = state.position;
+        slide.style.visibility = state.visibility;
+        slide.style.pointerEvents = state.pointerEvents;
+        slide.style.inset = state.inset;
+        slide.style.height = state.height;
+      });
+
+      root.style.setProperty(
+        '--ts-preview-equal-height',
+        `${Math.ceil(tallest)}px`
+      );
+    };
+
+    const replayActiveText = () => {
+      const active = slides[index];
+      if (!active || !root.classList.contains('is-in-view')) return;
+
+      active.classList.remove('is-active');
+      void active.offsetWidth;
+
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => active.classList.add('is-active'));
+      });
+    };
+
+    const show = async (nextIndex) => {
+      const targetIndex = (nextIndex + slides.length) % slides.length;
+      const token = ++switchToken;
+
+      /* Keep the current slide visible until the target image is decoded. */
+      await ensureSlideReady(slides[targetIndex], 'high');
+      if (token !== switchToken) return;
+
+      index = targetIndex;
+
+      slides.forEach((slide, slideIndex) => {
+        const active = slideIndex === index;
+        slide.classList.remove('is-active');
+
+        if (active) {
+          slide.hidden = false;
+          slide.setAttribute('aria-hidden', 'false');
+
+          if (root.classList.contains('is-in-view')) {
+            requestAnimationFrame(() => {
+              requestAnimationFrame(() => slide.classList.add('is-active'));
+            });
+          }
+        } else {
+          slide.hidden = true;
+          slide.setAttribute('aria-hidden', 'true');
+        }
+      });
+
+      /* As soon as a slide is active, prepare its neighbors. */
+      preloadAround(index);
+    };
+
+    /* Initial state. */
+    slides.forEach((slide, slideIndex) => {
+      slide.classList.remove('is-active');
+
+      if (slideIndex === 0) {
+        slide.hidden = false;
+        slide.setAttribute('aria-hidden', 'false');
+      } else {
+        slide.hidden = true;
+        slide.setAttribute('aria-hidden', 'true');
+      }
+    });
+
+    /* First image + both neighboring slides are prepared immediately. */
+    ensureSlideReady(slides[0], 'high');
+    preloadAround(0);
+
+    /* The tallest text block defines one stable height for every slide. */
+    requestAnimationFrame(() => {
+      equalizeSlideHeights();
+      requestAnimationFrame(equalizeSlideHeights);
+    });
+
+    if (document.fonts?.ready) {
+      document.fonts.ready.then(equalizeSlideHeights).catch(() => {});
+    }
+
+    window.addEventListener('resize', () => {
+      window.clearTimeout(resizeTimer);
+      resizeTimer = window.setTimeout(() => {
+        equalizeSlideHeights();
+        preloadAround(index);
+      }, 140);
+    }, { passive: true });
+
+    if ('IntersectionObserver' in window) {
+      const observer = new IntersectionObserver(
+        (entries) => {
+          entries.forEach((entry) => {
+            if (!entry.isIntersecting) return;
+
+            root.classList.add('is-in-view');
+            replayActiveText();
+            observer.unobserve(root);
+          });
+        },
+        {
+          threshold: 0.18,
+          rootMargin: '0px 0px -8% 0px'
+        }
+      );
+
+      observer.observe(root);
+    } else {
+      root.classList.add('is-in-view');
+      replayActiveText();
+    }
+
+    prev?.addEventListener('click', (event) => {
+      event.preventDefault();
+      show(index - 1);
+    });
+
+    next?.addEventListener('click', (event) => {
+      event.preventDefault();
+      show(index + 1);
+    });
+
+    slider.addEventListener('touchstart', (event) => {
+      const touch = event.touches?.[0];
+      if (!touch) return;
+
+      touchStartX = touch.clientX;
+      touchStartY = touch.clientY;
+    }, { passive: true });
+
+    slider.addEventListener('touchend', (event) => {
+      if (touchStartX === null || touchStartY === null) return;
+
+      const touch = event.changedTouches?.[0];
+      if (!touch) return;
+
+      const dx = touch.clientX - touchStartX;
+      const dy = touch.clientY - touchStartY;
+
+      touchStartX = null;
+      touchStartY = null;
+
+      if (Math.abs(dx) < 36 || Math.abs(dx) <= Math.abs(dy)) return;
+
+      show(index + (dx < 0 ? 1 : -1));
+    }, { passive: true });
+  })();
+</script>
+
+{% schema %}
+{
+  "name": "TS – Manufaktur Vorschau",
+  "tag": "section",
+  "class": "section-ts-manufacture-preview",
+  "settings": [
+    {
+      "type": "header",
+      "content": "Zentrale Inhalte"
+    },
+    {
+      "type": "paragraph",
+      "content": "Die Slides werden 1:1 aus denselben Manufaktur-Metaobjekten übernommen. Bild, Bildseite, Inhalt, Typografie, Gradient und Abschnittsproportionen entsprechen der großen Manufaktur-Seite."
+    },
+    {
+      "type": "header",
+      "content": "Linkleiste"
+    },
+    {
+      "type": "text",
+      "id": "bar_text",
+      "label": "Text",
+      "default": "Die Manufaktur entdecken"
+    },
+    {
+      "type": "url",
+      "id": "manufacture_link",
+      "label": "Link zur Manufaktur-Seite"
+    },
+    {
+      "type": "checkbox",
+      "id": "show_bar_arrow",
+      "label": "Pfeil anzeigen",
+      "default": true
+    }
+  ],
+  "blocks": [
+    {
+      "type": "topic",
+      "name": "Manufaktur Thema",
+      "settings": [
+        {
+          "type": "image_picker",
+          "id": "image",
+          "label": "Bild"
+        },
+        {
+          "type": "image_picker",
+          "id": "mobile_image",
+          "label": "Bild Mobil (optional)"
+        },
+        {
+          "type": "select",
+          "id": "image_side",
+          "label": "Bildseite",
+          "options": [
+            {
+              "value": "auto",
+              "label": "Automatisch alternierend"
+            },
+            {
+              "value": "left",
+              "label": "Bild links / Text rechts"
+            },
+            {
+              "value": "right",
+              "label": "Bild rechts / Text links"
+            }
+          ],
+          "default": "auto"
+        },
+        {
+          "type": "text",
+          "id": "overline",
+          "label": "Kleine Überschrift"
+        },
+        {
+          "type": "text",
+          "id": "heading",
+          "label": "Titel"
+        },
+        {
+          "type": "richtext",
+          "id": "text",
+          "label": "Text"
+        }
+      ]
+    }
+  ],
+  "presets": [
+    {
+      "name": "TS – Manufaktur Vorschau",
+      "blocks": [
+        {
+          "type": "topic",
+          "settings": {
+            "overline": "DIE VISION",
+            "heading": "Parfum als Luxusprodukt",
+            "text": "<p>Parfum ist für Tom Schiller kein beiläufiges Accessoire, sondern ein vollständiges Luxusprodukt. Duft, Material, Haptik und Präsentation werden als Einheit gedacht.</p>"
+          }
+        },
+        {
+          "type": "topic",
+          "settings": {
+            "overline": "MADE IN GERMANY",
+            "heading": "Entwicklung und Handwerk im Haus",
+            "text": "<p>Entwicklung, Herstellung, Abfüllung, Qualitätskontrolle und Vertrieb werden bewusst eng zusammengeführt.</p>"
+          }
+        },
+        {
+          "type": "topic",
+          "settings": {
+            "overline": "KONZENTRATION",
+            "heading": "Extrait de Parfum",
+            "text": "<p>Eine hohe Duftkonzentration steht nicht nur für Intensität, sondern für Tiefe, Präsenz und einen langen Verlauf auf der Haut.</p>"
+          }
+        },
+        {
+          "type": "topic",
+          "settings": {
+            "overline": "ZEIT",
+            "heading": "Reifung ist Teil der Komposition",
+            "text": "<p>Mazeration und Nachreife geben den Materialien Zeit, sich zu verbinden und als geschlossene Komposition zu entwickeln.</p>"
+          }
+        },
+        {
+          "type": "topic",
+          "settings": {
+            "overline": "DUFTARCHITEKTUR",
+            "heading": "Ein Duft lebt in Bewegung",
+            "text": "<p>Unterschiedliche Materialien entfalten sich zu unterschiedlichen Zeitpunkten. So entsteht ein Duftverlauf statt eines statischen Bildes.</p>"
+          }
+        },
+        {
+          "type": "topic",
+          "settings": {
+            "overline": "MATERIALIEN",
+            "heading": "Rohstoffe und moderne Duftmoleküle",
+            "text": "<p>Natürliche Rohstoffe und moderne Duftmoleküle werden verbunden, um Präzision, Tiefe und neue olfaktorische Effekte zu schaffen.</p>"
+          }
+        },
+        {
+          "type": "topic",
+          "settings": {
+            "overline": "PRÄSENTATION",
+            "heading": "Der Flakon ist Teil des Parfums",
+            "text": "<p>Glas, Metall, Verschluss, Etikett und Verpackung gehören zum Gesamterlebnis und werden als Teil des Produkts verstanden.</p>"
+          }
+        }
+      ]
+    }
+  ]
+}
+{% endschema %}

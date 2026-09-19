@@ -1,0 +1,950 @@
+{% comment %}
+  Inhaltsstoff-Highlights – Editoriale Bühne
+  Shopify Online Store 2.0 Section
+
+  Empfohlenes Datenmodell:
+  Produkt-Metafeld (Liste von Metaobjekt-Referenzen):
+    custom.inhaltsstoff_highlights
+
+  Metaobjekt "Inhaltsstoff-Highlight":
+    - name
+    - herkunft
+    - erlauterung
+    - bild
+
+  Die Section zeigt automatisch 2 oder 3 Einträge. Maximal 3.
+  Die Feldschlüssel lassen sich im Theme-Editor anpassen.
+{% endcomment %}
+
+{% liquid
+  assign ih_namespace = section.settings.metafield_namespace | default: 'custom' | strip
+  assign ih_product_key = section.settings.product_metafield_key | default: 'inhaltsstoff_highlights' | strip
+  assign ih_items_metafield = product.metafields[ih_namespace][ih_product_key]
+  assign ih_items = ih_items_metafield.value
+
+  assign ih_name_key = section.settings.name_key | default: 'name' | strip
+  assign ih_origin_key = section.settings.origin_key | default: 'herkunft' | strip
+  assign ih_description_key = section.settings.description_key | default: 'erlauterung' | strip
+  assign ih_image_key = section.settings.image_key | default: 'bild' | strip
+%}
+
+{% if product != blank and ih_items != blank %}
+  <section
+    id="IngredientEditorial-{{ section.id }}"
+    class="ingredient-editorial"
+    style="
+      --ie-header-bg: {{ section.settings.header_background_color }};
+      --ie-body-bg: {{ section.settings.body_background_color }};
+      --ie-accent: {{ section.settings.accent_color }};
+      --ie-header-text: {{ section.settings.header_text_color }};
+      --ie-header-muted: {{ section.settings.header_muted_color }};
+      --ie-card-bg: {{ section.settings.card_background_color }};
+      --ie-card-text: {{ section.settings.card_text_color }};
+      --ie-image-text: {{ section.settings.image_text_color }};
+      --ie-overlay: {{ section.settings.image_overlay | divided_by: 100.0 }};
+      --ie-overlay-closed: {{ section.settings.image_overlay | plus: 15 | at_most: 100 | divided_by: 100.0 }};
+      --ie-max-width: {{ section.settings.max_width }}px;
+      --ie-collapsed-height: {{ section.settings.collapsed_height }}px;
+      --ie-expanded-height: {{ section.settings.expanded_height }}px;
+      --ie-animation-duration: {{ section.settings.animation_duration }}ms;
+    "
+  >
+    {% if section.settings.eyebrow != blank or section.settings.heading != blank or section.settings.intro != blank %}
+      <div class="ingredient-editorial__header-area">
+        <div class="ingredient-editorial__header-inner page-width">
+          <header class="ingredient-editorial__header">
+            {% if section.settings.eyebrow != blank %}
+              <p class="ingredient-editorial__eyebrow">{{ section.settings.eyebrow | escape }}</p>
+            {% endif %}
+
+            {% if section.settings.heading != blank %}
+              <h2 class="ingredient-editorial__heading">{{ section.settings.heading | escape }}</h2>
+            {% endif %}
+
+            {% if section.settings.intro != blank %}
+              <div class="ingredient-editorial__intro rte">{{ section.settings.intro }}</div>
+            {% endif %}
+          </header>
+        </div>
+      </div>
+    {% endif %}
+
+    <div class="ingredient-editorial__body">
+      <div class="ingredient-editorial__inner page-width" data-editorial-root>
+        <div class="ingredient-editorial__stack">
+          {% for item in ih_items limit: 3 %}
+            {% liquid
+              assign item_name = item[ih_name_key].value
+              assign item_origin = item[ih_origin_key].value
+              assign item_description = item[ih_description_key].value
+
+              assign item_image_field = item[ih_image_key]
+              assign item_image = item_image_field.value
+              assign item_image_source = item_image.preview_image | default: item_image
+              assign item_image_url = ''
+              if item_image_source != blank
+                assign item_image_url = item_image_source | image_url: width: 2200
+              endif
+            %}
+
+            {% if item_name != blank %}
+              <article
+                class="ingredient-card"
+                data-ingredient-card
+                data-index="{{ forloop.index }}"
+                {% if item_image_url != blank %}data-background="{{ item_image_url }}"{% endif %}
+              >
+                {% if item_image_source != blank %}
+                  <div class="ingredient-card__image" aria-hidden="true">
+                    {{
+                      item_image_source
+                      | image_url: width: 2200
+                      | image_tag:
+                        class: 'ingredient-card__image-element',
+                        widths: '750, 1100, 1500, 1800, 2200',
+                        sizes: '(max-width: 749px) 100vw, 1200px',
+                        loading: 'lazy',
+                        alt: ''
+                    }}
+                  </div>
+                {% endif %}
+
+                <div class="ingredient-card__overlay" aria-hidden="true"></div>
+
+                <div class="ingredient-card__collapsed">
+                  <div class="ingredient-card__collapsed-main">
+                    <h3 class="ingredient-card__collapsed-title">{{ item_name | escape }}</h3>
+                    {% if item_origin != blank %}
+                      <p class="ingredient-card__collapsed-origin">{{ item_origin | escape }}</p>
+                    {% endif %}
+                  </div>
+                  <span class="ingredient-card__indicator" aria-hidden="true"></span>
+                </div>
+
+                <div class="ingredient-card__expanded">
+                  <div class="ingredient-card__expanded-copy">
+                    {% if item_origin != blank %}
+                      <p class="ingredient-card__kicker">{{ item_origin | escape }}</p>
+                    {% endif %}
+
+                    <h3 class="ingredient-card__title">{{ item_name | escape }}</h3>
+
+                    {% if item_description != blank %}
+                      <div class="ingredient-card__description rte">{{ item_description }}</div>
+                    {% endif %}
+
+                  </div>
+                </div>
+              </article>
+            {% endif %}
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+  </section>
+
+  {% style %}
+    #IngredientEditorial-{{ section.id }} {
+      width: 100%;
+      margin: 0;
+      padding: 0;
+      color: var(--ie-header-text);
+      background: var(--ie-body-bg);
+      overflow: clip;
+    }
+
+    #IngredientEditorial-{{ section.id }} * {
+      box-sizing: border-box;
+    }
+
+    /* Section auf Desktop UND Mobil aus der Theme-/page-width-Begrenzung
+       herausziehen, damit der Hintergrund bis an beide Bildschirmkanten reicht. */
+    #IngredientEditorial-{{ section.id }} {
+      position: relative;
+      left: 50%;
+      width: 100vw;
+      max-width: 100vw;
+      margin-right: -50vw;
+      margin-left: -50vw;
+      overflow-x: clip;
+    }
+
+    @supports (width: 100dvw) {
+      #IngredientEditorial-{{ section.id }} {
+        width: 100dvw;
+        max-width: 100dvw;
+        margin-right: -50dvw;
+        margin-left: -50dvw;
+      }
+    }
+
+    #IngredientEditorial-{{ section.id }} .ingredient-editorial__header-area {
+      width: 100%;
+      padding-top: {{ section.settings.padding_top }}px;
+      padding-bottom: {{ section.settings.header_padding_bottom }}px;
+      background: var(--ie-header-bg);
+    }
+
+    #IngredientEditorial-{{ section.id }} .ingredient-editorial__header-inner,
+    #IngredientEditorial-{{ section.id }} .ingredient-editorial__inner {
+      width: 100%;
+      max-width: var(--ie-max-width);
+      margin: 0 auto;
+    }
+
+    #IngredientEditorial-{{ section.id }} .ingredient-editorial__header {
+      max-width: 760px;
+      margin: 0 auto;
+      text-align: center;
+    }
+
+    #IngredientEditorial-{{ section.id }} .ingredient-editorial__eyebrow {
+      margin: 0 0 .7rem;
+      color: var(--ie-accent);
+      font-size: 1rem;
+      font-weight: 600;
+      letter-spacing: .16em;
+      text-transform: uppercase;
+    }
+
+    #IngredientEditorial-{{ section.id }} .ingredient-editorial__heading {
+      margin: 0;
+      color: var(--ie-header-text);
+      font-size: clamp(2.8rem, 5vw, 4.8rem);
+      line-height: 1.08;
+    }
+
+    #IngredientEditorial-{{ section.id }} .ingredient-editorial__intro {
+      margin-top: 1rem;
+      color: var(--ie-header-muted);
+    }
+
+    #IngredientEditorial-{{ section.id }} .ingredient-editorial__body {
+      width: 100%;
+      padding-top: {{ section.settings.body_padding_top }}px;
+      padding-bottom: {{ section.settings.padding_bottom }}px;
+      background: var(--ie-body-bg);
+    }
+
+    #IngredientEditorial-{{ section.id }} .ingredient-editorial__stack {
+      display: flex;
+      flex-direction: column;
+      gap: {{ section.settings.card_gap }}px;
+    }
+
+    #IngredientEditorial-{{ section.id }} .ingredient-card {
+      position: relative;
+      width: 100%;
+      height: var(--ie-collapsed-height);
+      min-height: var(--ie-collapsed-height);
+      overflow: hidden;
+      color: var(--ie-image-text);
+      background: var(--ie-card-bg);
+      border: 0;
+      transition:
+        height var(--ie-animation-duration) cubic-bezier(.16, 1, .3, 1),
+        min-height var(--ie-animation-duration) cubic-bezier(.16, 1, .3, 1),
+        color var(--ie-animation-duration) ease;
+      isolation: isolate;
+    }
+
+    #IngredientEditorial-{{ section.id }} .ingredient-card.is-active {
+      height: var(--ie-expanded-height);
+      min-height: var(--ie-expanded-height);
+      color: var(--ie-image-text);
+    }
+
+    #IngredientEditorial-{{ section.id }} .ingredient-card__image,
+    #IngredientEditorial-{{ section.id }} .ingredient-card__overlay {
+      position: absolute;
+      inset: 0;
+      z-index: 0;
+      opacity: 1;
+      pointer-events: none;
+    }
+
+    #IngredientEditorial-{{ section.id }} .ingredient-card__image {
+      transition: opacity var(--ie-animation-duration) cubic-bezier(.16, 1, .3, 1);
+    }
+
+    #IngredientEditorial-{{ section.id }} .ingredient-card__overlay {
+      background: rgba(0, 0, 0, var(--ie-overlay-closed));
+      transition: background-color var(--ie-animation-duration) cubic-bezier(.16, 1, .3, 1);
+    }
+
+    #IngredientEditorial-{{ section.id }} .ingredient-card__image-element {
+      display: block;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      object-position: center;
+      transform: scale(1.045);
+      transition: transform var(--ie-animation-duration) cubic-bezier(.16, 1, .3, 1);
+    }
+
+    #IngredientEditorial-{{ section.id }} .ingredient-card.is-active .ingredient-card__overlay {
+      background: rgba(0, 0, 0, var(--ie-overlay));
+    }
+
+    #IngredientEditorial-{{ section.id }} .ingredient-card.is-active .ingredient-card__image-element {
+      transform: scale(1);
+    }
+
+    #IngredientEditorial-{{ section.id }} .ingredient-card__collapsed {
+      position: absolute;
+      z-index: 2;
+      inset: 0;
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: clamp(1rem, 2.5vw, 2.5rem);
+      align-items: center;
+      padding: 1.4rem clamp(2rem, 4vw, 4.5rem);
+      opacity: 1;
+      transform: translateY(0);
+      transition:
+        opacity var(--ie-animation-duration) ease,
+        transform var(--ie-animation-duration) cubic-bezier(.16, 1, .3, 1);
+    }
+
+    #IngredientEditorial-{{ section.id }} .ingredient-card.is-active .ingredient-card__collapsed {
+      opacity: 0;
+      transform: translateY(-14px);
+      pointer-events: none;
+    }
+
+    #IngredientEditorial-{{ section.id }} .ingredient-card__collapsed-title {
+      margin: 0;
+      color: currentColor;
+      font-size: clamp(1.24rem, 2vw, 1.92rem);
+      line-height: 1.1;
+    }
+
+    #IngredientEditorial-{{ section.id }} .ingredient-card__collapsed-origin {
+      margin: .35rem 0 0;
+      color: color-mix(in srgb, currentColor 66%, transparent);
+      font-size: 1rem;
+    }
+
+    #IngredientEditorial-{{ section.id }} .ingredient-card__indicator {
+      position: relative;
+      width: 28px;
+      height: 28px;
+      border: 1px solid color-mix(in srgb, currentColor 48%, transparent);
+      border-radius: 50%;
+    }
+
+    #IngredientEditorial-{{ section.id }} .ingredient-card__indicator::before,
+    #IngredientEditorial-{{ section.id }} .ingredient-card__indicator::after {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 10px;
+      height: 1px;
+      background: currentColor;
+      transform: translate(-50%, -50%);
+    }
+
+    #IngredientEditorial-{{ section.id }} .ingredient-card__indicator::after {
+      transform: translate(-50%, -50%) rotate(90deg);
+    }
+
+    #IngredientEditorial-{{ section.id }} .ingredient-card__expanded {
+      position: absolute;
+      z-index: 2;
+      inset: 0;
+      display: flex;
+      align-items: flex-end;
+      padding: clamp(2rem, 4vw, 4.5rem);
+      opacity: 0;
+      transform: translateY(26px);
+      transition:
+        opacity var(--ie-animation-duration) ease,
+        transform var(--ie-animation-duration) cubic-bezier(.16, 1, .3, 1);
+      pointer-events: none;
+    }
+
+    #IngredientEditorial-{{ section.id }} .ingredient-card.is-active .ingredient-card__expanded {
+      opacity: 1;
+      transform: translateY(0);
+      pointer-events: auto;
+    }
+
+    #IngredientEditorial-{{ section.id }} .ingredient-card__expanded-copy {
+      width: min(100%, 720px);
+    }
+
+    #IngredientEditorial-{{ section.id }} .ingredient-card__kicker {
+      display: flex;
+      flex-wrap: wrap;
+      gap: .45rem;
+      margin: 0 0 .85rem;
+      color: color-mix(in srgb, var(--ie-image-text) 82%, transparent);
+      font-size: .95rem;
+      font-weight: 600;
+      letter-spacing: .14em;
+      text-transform: uppercase;
+    }
+
+    #IngredientEditorial-{{ section.id }} .ingredient-card__separator {
+      color: var(--ie-accent);
+    }
+
+    #IngredientEditorial-{{ section.id }} .ingredient-card__title {
+      margin: 0;
+      color: var(--ie-image-text);
+      font-size: clamp(2.4rem, 4.8vw, 4.8rem);
+      line-height: .98;
+    }
+
+    #IngredientEditorial-{{ section.id }} .ingredient-card__description {
+      max-width: 640px;
+      margin-top: 1.35rem;
+      color: var(--ie-image-text);
+      font-size: clamp(.8rem, 1.08vw, 1rem);
+    }
+
+    #IngredientEditorial-{{ section.id }} .ingredient-card__description > *:first-child {
+      margin-top: 0;
+    }
+
+    #IngredientEditorial-{{ section.id }} .ingredient-card__description > *:last-child {
+      margin-bottom: 0;
+    }
+
+
+
+    @media screen and (max-width: 749px) {
+      #IngredientEditorial-{{ section.id }} {
+        position: relative;
+        left: 50%;
+        width: 100vw;
+        max-width: 100vw;
+        margin-right: -50vw;
+        margin-left: -50vw;
+        overflow-x: hidden;
+      }
+
+      @supports (width: 100dvw) {
+        #IngredientEditorial-{{ section.id }} {
+          width: 100dvw;
+          max-width: 100dvw;
+          margin-right: -50dvw;
+          margin-left: -50dvw;
+        }
+      }
+
+      #IngredientEditorial-{{ section.id }} .ingredient-editorial__header-inner {
+        max-width: none;
+        margin: 0;
+        padding-right: 20px;
+        padding-left: 20px;
+      }
+
+      #IngredientEditorial-{{ section.id }} .ingredient-editorial__inner {
+        width: 100vw;
+        max-width: 100vw;
+        margin: 0;
+        padding-right: 0;
+        padding-left: 0;
+      }
+
+      @supports (width: 100dvw) {
+        #IngredientEditorial-{{ section.id }} .ingredient-editorial__inner {
+          width: 100dvw;
+          max-width: 100dvw;
+        }
+      }
+
+      #IngredientEditorial-{{ section.id }} .ingredient-editorial__stack,
+      #IngredientEditorial-{{ section.id }} .ingredient-card {
+        width: 100%;
+        max-width: none;
+        margin-right: 0;
+        margin-left: 0;
+      }
+
+      #IngredientEditorial-{{ section.id }} .ingredient-editorial__header {
+        text-align: left;
+      }
+
+      #IngredientEditorial-{{ section.id }} .ingredient-card {
+        --ie-collapsed-height: {{ section.settings.mobile_collapsed_height }}px;
+        --ie-expanded-height: {{ section.settings.mobile_expanded_height }}px;
+      }
+
+      #IngredientEditorial-{{ section.id }} .ingredient-card__collapsed {
+        grid-template-columns: 1fr auto;
+        padding: 1.15rem 1.25rem;
+      }
+
+      #IngredientEditorial-{{ section.id }} .ingredient-card__collapsed,
+      #IngredientEditorial-{{ section.id }} .ingredient-card__collapsed *,
+      #IngredientEditorial-{{ section.id }} .ingredient-card__collapsed-title,
+      #IngredientEditorial-{{ section.id }} .ingredient-card__collapsed-origin {
+        text-decoration: none !important;
+        text-decoration-line: none !important;
+        -webkit-text-decoration: none !important;
+      }
+
+      #IngredientEditorial-{{ section.id }} .ingredient-card__expanded {
+        padding: 1.5rem 1.25rem;
+      }
+
+      #IngredientEditorial-{{ section.id }} .ingredient-card__title {
+        font-size: clamp(2.08rem, 9.6vw, 3.52rem);
+      }
+
+      #IngredientEditorial-{{ section.id }} .ingredient-card__description {
+        font-size: .8rem;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      #IngredientEditorial-{{ section.id }} .ingredient-card,
+      #IngredientEditorial-{{ section.id }} .ingredient-card__image,
+      #IngredientEditorial-{{ section.id }} .ingredient-card__overlay,
+      #IngredientEditorial-{{ section.id }} .ingredient-card__image-element,
+      #IngredientEditorial-{{ section.id }} .ingredient-card__collapsed,
+      #IngredientEditorial-{{ section.id }} .ingredient-card__expanded {
+        transition-duration: 0.01ms !important;
+      }
+    }
+  {% endstyle %}
+
+  <script>
+    (() => {
+      const section = document.getElementById('IngredientEditorial-{{ section.id }}');
+      if (!section) return;
+
+      const root = section.querySelector('[data-editorial-root]');
+      const cards = Array.from(section.querySelectorAll('[data-ingredient-card]'));
+      if (!root || cards.length === 0 || root.dataset.initialized === 'true') return;
+      root.dataset.initialized = 'true';
+
+      let ticking = false;
+      let sectionVisible = false;
+      let hasEnteredSection = false;
+      let hoveredCard = null;
+      let lastScrollY = window.scrollY || window.pageYOffset || 0;
+      let scrollDirection = 'down';
+
+      const updateScrollDirection = () => {
+        const currentScrollY = window.scrollY || window.pageYOffset || 0;
+
+        if (currentScrollY > lastScrollY + 1) {
+          scrollDirection = 'down';
+        } else if (currentScrollY < lastScrollY - 1) {
+          scrollDirection = 'up';
+        }
+
+        lastScrollY = currentScrollY;
+      };
+
+      const setActive = (activeCard) => {
+        cards.forEach((card) => {
+          card.classList.toggle('is-active', card === activeCard);
+        });
+      };
+
+      const updateActiveCard = () => {
+        ticking = false;
+        if (!sectionVisible || !hasEnteredSection || hoveredCard) return;
+
+        const viewportHeight = window.innerHeight || document.documentElement.clientHeight;
+        const activationY = viewportHeight * 0.52;
+        let activeCard = cards[0];
+
+        /*
+          Beim Herunterscrollen übernimmt immer der nächste Kasten, sobald seine
+          Oberkante die Aktivierungslinie erreicht. Beim Hochscrollen läuft die
+          Auswahl entsprechend rückwärts. Zu jedem Zeitpunkt ist nur eine Karte offen.
+        */
+        cards.forEach((card) => {
+          const rect = card.getBoundingClientRect();
+          if (rect.top <= activationY) activeCard = card;
+        });
+
+        setActive(activeCard);
+      };
+
+      const requestUpdate = () => {
+        if (ticking) return;
+        ticking = true;
+        window.requestAnimationFrame(updateActiveCard);
+      };
+
+      const sectionObserver = new IntersectionObserver((entries) => {
+        entries.forEach((entry) => {
+          sectionVisible = entry.isIntersecting;
+
+          if (sectionVisible) {
+            if (!hasEnteredSection) {
+              hasEnteredSection = true;
+              setActive(cards[0]);
+            } else {
+              requestUpdate();
+            }
+          } else {
+            /*
+              Mit threshold 0 landet diese Logik erst hier, wenn die Section
+              tatsächlich komplett aus dem Viewport verschwunden ist.
+
+              Beim Verlassen nach unten bleibt die LETZTE Karte geöffnet.
+              Beim Verlassen nach oben bleibt das bisherige Verhalten erhalten.
+            */
+            if (scrollDirection === 'down') {
+              setActive(cards[cards.length - 1]);
+            } else {
+              cards.forEach((card) => card.classList.remove('is-active'));
+            }
+          }
+        });
+      }, {
+        /*
+          threshold 0: Die Section gilt solange als sichtbar, wie auch nur
+          ein kleiner Teil davon noch im Viewport liegt. Dadurch bleibt die
+          normale Scrollsteuerung der Karten bis zum tatsächlichen Ende aktiv.
+        */
+        threshold: 0,
+        rootMargin: '0px'
+      });
+
+      sectionObserver.observe(root);
+
+      window.addEventListener('scroll', () => {
+        updateScrollDirection();
+
+        /*
+          Solange die Section noch sichtbar ist, entscheidet ausschließlich
+          die ursprüngliche Scrolllogik anhand der Aktivierungslinie, welche
+          Karte geöffnet wird. Erst der Observer hält nach dem echten
+          Verlassen nach unten die letzte Karte offen.
+        */
+        requestUpdate();
+      }, { passive: true });
+
+      window.addEventListener('resize', requestUpdate, { passive: true });
+
+      cards.forEach((card) => {
+        card.addEventListener('mouseenter', () => {
+          hoveredCard = card;
+          setActive(card);
+        });
+
+        card.addEventListener('mouseleave', () => {
+          if (hoveredCard === card) hoveredCard = null;
+          requestUpdate();
+        });
+
+        card.addEventListener('focusin', () => {
+          hoveredCard = card;
+          setActive(card);
+        });
+
+        card.addEventListener('focusout', () => {
+          if (hoveredCard === card) hoveredCard = null;
+          requestUpdate();
+        });
+
+        card.addEventListener('click', () => {
+          setActive(card);
+        });
+      });
+
+      const preloadedImages = [];
+      const preloadImages = () => {
+        const urls = new Set(cards.map((card) => card.dataset.background).filter(Boolean));
+        urls.forEach((url, index) => {
+          const image = new Image();
+          image.decoding = 'async';
+          if ('fetchPriority' in image) image.fetchPriority = index === 0 ? 'auto' : 'low';
+          image.src = url;
+          preloadedImages.push(image);
+        });
+        root._ingredientEditorialPreloadedImages = preloadedImages;
+      };
+
+      if ('IntersectionObserver' in window) {
+        const preloadObserver = new IntersectionObserver((entries) => {
+          if (!entries.some((entry) => entry.isIntersecting)) return;
+          preloadObserver.disconnect();
+          preloadImages();
+        }, {
+          threshold: 0,
+          rootMargin: '1200px 0px 1200px 0px'
+        });
+        preloadObserver.observe(section);
+      } else {
+        preloadImages();
+      }
+
+    })();
+  </script>
+
+{% elsif request.design_mode %}
+  <section id="IngredientEditorial-{{ section.id }}" class="ingredient-editorial">
+    <div class="page-width" style="padding-top: 3rem; padding-bottom: 3rem;">
+      <div style="padding: 2rem; border: 1px dashed currentColor;">
+        <strong>Inhaltsstoff-Highlights: keine Daten gefunden</strong>
+        <p style="margin-bottom:0;">
+          Lege am Produkt eine Liste von Metaobjekt-Referenzen an und prüfe die Datenverknüpfung der Section.
+          Erwarteter Standard: <code>custom.inhaltsstoff_highlights</code>. Das Metaobjekt sollte die Felder <code>name</code>, <code>herkunft</code>, <code>erlauterung</code> und <code>bild</code> enthalten.
+        </p>
+      </div>
+    </div>
+  </section>
+{% endif %}
+
+{% schema %}
+{
+  "name": "Inhaltsstoff Highlights",
+  "tag": "section",
+  "class": "section",
+  "settings": [
+    {
+      "type": "header",
+      "content": "Überschriftskasten"
+    },
+    {
+      "type": "text",
+      "id": "eyebrow",
+      "label": "Überüberschrift",
+      "default": "AUSGEWÄHLTE ROHSTOFFE"
+    },
+    {
+      "type": "text",
+      "id": "heading",
+      "label": "Überschrift",
+      "default": "Die Essenz der Komposition"
+    },
+    {
+      "type": "richtext",
+      "id": "intro",
+      "label": "Einleitung",
+      "default": "<p>Besondere Materialien, ihre Herkunft und die Geschichte hinter ihrer Verwendung.</p>"
+    },
+    {
+      "type": "color",
+      "id": "header_background_color",
+      "label": "Hintergrundfarbe des Kopfbereichs",
+      "default": "#000000"
+    },
+    {
+      "type": "color",
+      "id": "header_text_color",
+      "label": "Textfarbe des Kopfbereichs",
+      "default": "#ffffff"
+    },
+    {
+      "type": "color",
+      "id": "header_muted_color",
+      "label": "Farbe der Einleitung",
+      "default": "#bdbdbd"
+    },
+    {
+      "type": "color",
+      "id": "accent_color",
+      "label": "Akzentfarbe",
+      "default": "#b89656"
+    },
+    {
+      "type": "header",
+      "content": "Editoriale Karten"
+    },
+    {
+      "type": "color",
+      "id": "body_background_color",
+      "label": "Hintergrundfarbe des Kartenbereichs",
+      "default": "#000000"
+    },
+    {
+      "type": "color",
+      "id": "card_background_color",
+      "label": "Farbe geschlossener Karten",
+      "default": "#111111"
+    },
+    {
+      "type": "color",
+      "id": "card_text_color",
+      "label": "Textfarbe geschlossener Karten",
+      "default": "#ffffff"
+    },
+    {
+      "type": "color",
+      "id": "image_text_color",
+      "label": "Textfarbe auf Bildern",
+      "default": "#ffffff"
+    },
+    {
+      "type": "range",
+      "id": "image_overlay",
+      "min": 0,
+      "max": 80,
+      "step": 5,
+      "unit": "%",
+      "label": "Abdunklung geöffneter Bilder",
+      "default": 45
+    },
+    {
+      "type": "range",
+      "id": "collapsed_height",
+      "min": 100,
+      "max": 260,
+      "step": 10,
+      "unit": "px",
+      "label": "Höhe geschlossen – Desktop",
+      "default": 150
+    },
+    {
+      "type": "range",
+      "id": "expanded_height",
+      "min": 400,
+      "max": 800,
+      "step": 20,
+      "unit": "px",
+      "label": "Höhe geöffnet – Desktop",
+      "default": 600
+    },
+    {
+      "type": "range",
+      "id": "mobile_collapsed_height",
+      "min": 90,
+      "max": 200,
+      "step": 10,
+      "unit": "px",
+      "label": "Höhe geschlossen – Mobil",
+      "default": 120
+    },
+    {
+      "type": "range",
+      "id": "mobile_expanded_height",
+      "min": 320,
+      "max": 620,
+      "step": 20,
+      "unit": "px",
+      "label": "Höhe geöffnet – Mobil",
+      "default": 460
+    },
+    {
+      "type": "range",
+      "id": "animation_duration",
+      "min": 400,
+      "max": 1600,
+      "step": 100,
+      "unit": "ms",
+      "label": "Animationsdauer",
+      "default": 900
+    },
+    {
+      "type": "range",
+      "id": "card_gap",
+      "min": 0,
+      "max": 32,
+      "step": 4,
+      "unit": "px",
+      "label": "Abstand zwischen Karten",
+      "default": 8
+    },
+    {
+      "type": "header",
+      "content": "Datenverknüpfung"
+    },
+    {
+      "type": "text",
+      "id": "metafield_namespace",
+      "label": "Produkt-Metafeld: Namespace",
+      "default": "custom"
+    },
+    {
+      "type": "text",
+      "id": "product_metafield_key",
+      "label": "Produkt-Metafeld: Schlüssel",
+      "default": "inhaltsstoff_highlights"
+    },
+    {
+      "type": "text",
+      "id": "name_key",
+      "label": "Rohstoff: Name",
+      "default": "name"
+    },
+    {
+      "type": "text",
+      "id": "origin_key",
+      "label": "Rohstoff: Herkunft",
+      "default": "herkunft"
+    },
+    {
+      "type": "text",
+      "id": "description_key",
+      "label": "Rohstoff: Erläuterung",
+      "default": "erlauterung"
+    },
+    {
+      "type": "text",
+      "id": "image_key",
+      "label": "Rohstoff: Bild",
+      "default": "bild"
+    },
+    {
+      "type": "header",
+      "content": "Abstände und Breite"
+    },
+    {
+      "type": "range",
+      "id": "max_width",
+      "min": 900,
+      "max": 1600,
+      "step": 50,
+      "unit": "px",
+      "label": "Maximale Inhaltsbreite",
+      "default": 1200
+    },
+    {
+      "type": "range",
+      "id": "padding_top",
+      "min": 0,
+      "max": 120,
+      "step": 4,
+      "unit": "px",
+      "label": "Abstand oben",
+      "default": 72
+    },
+    {
+      "type": "range",
+      "id": "header_padding_bottom",
+      "min": 20,
+      "max": 120,
+      "step": 4,
+      "unit": "px",
+      "label": "Abstand unter Überschrift",
+      "default": 52
+    },
+    {
+      "type": "range",
+      "id": "body_padding_top",
+      "min": 0,
+      "max": 100,
+      "step": 4,
+      "unit": "px",
+      "label": "Abstand vor Karten",
+      "default": 20
+    },
+    {
+      "type": "range",
+      "id": "padding_bottom",
+      "min": 0,
+      "max": 140,
+      "step": 4,
+      "unit": "px",
+      "label": "Abstand unten",
+      "default": 72
+    }
+  ],
+  "presets": [
+    {
+      "name": "Inhaltsstoff Highlights"
+    }
+  ]
+}
+{% endschema %}

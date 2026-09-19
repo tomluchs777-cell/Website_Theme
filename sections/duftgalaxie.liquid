@@ -1,0 +1,3318 @@
+{% comment %}
+  DUFTGALAXIE – Shopify Online Store 2.0
+
+  Startseiten-Section für bis zu drei Parfüms.
+
+  Erwartetes Datenmodell je ausgewähltem Produkt:
+  - custom.duftkomponente        -> Liste von Duftkomponente-Metaobjekten
+  - custom.parfumname_schwarz    -> normales / dunkles Logo
+  - custom.parfumname            -> komplementäres Logo für den aktiven Selector
+
+  Duftkomponente:
+  - duftnote
+  - intensitat
+  - aufgabe
+
+  Duftnote:
+  - name
+  - beschreibung
+  - duftabbildung
+  - darstellungsfarbe
+
+  Verhalten:
+  - ein durchgehender Selector-Balken mit drei festen Logo-Positionen
+  - eine einzige Highlight-Fläche fährt hinter das ausgewählte Produkt
+  - inaktive Logos: parfumname_schwarz
+  - aktives Logo: parfumname
+  - alter Orbit zieht sich beim Produktwechsel ins Zentrum zurück
+  - neue Duftwelt fährt anschließend spiralförmig heraus
+  - rechte Infobox schließt beim Wechsel nach rechts und öffnet sich wieder
+  - beim vollständigen Verlassen der Section wird die Animation zurückgesetzt
+  - beim erneuten Hineinscrollen startet die aktive Duftwelt erneut
+  - komplette Section ist Desktop + Mobil full bleed
+{% endcomment %}
+
+{% liquid
+  assign dg_namespace = section.settings.metafield_namespace | default: 'custom' | strip
+  assign dg_components_key = section.settings.product_metafield_key | default: 'duftkomponente' | strip
+
+  assign dg_component_note_key = section.settings.component_note_key | default: 'duftnote' | strip
+  assign dg_component_intensity_key = section.settings.component_intensity_key | default: 'intensitat' | strip
+  assign dg_component_task_key = section.settings.component_task_key | default: 'aufgabe' | strip
+
+  assign dg_note_name_key = section.settings.note_name_key | default: 'name' | strip
+  assign dg_note_description_key = section.settings.note_description_key | default: 'beschreibung' | strip
+  assign dg_note_image_key = section.settings.note_image_key | default: 'duftabbildung' | strip
+  assign dg_note_color_key = section.settings.note_color_key | default: 'darstellungsfarbe' | strip
+
+  assign dg_logo_dark_key = section.settings.logo_dark_key | default: 'parfumname_schwarz' | strip
+  assign dg_logo_active_key = section.settings.logo_active_key | default: 'parfumname' | strip
+  assign dg_product_visual_key = section.settings.product_visual_key | default: 'produktdarstellung_schwarz' | strip
+
+  assign dg_first_product_index = -1
+  assign dg_first_product = blank
+  assign dg_initial_highlight = section.settings.highlight_color_1
+
+  for dg_i in (1..3)
+    capture dg_product_setting_key
+      echo 'product_' | append: dg_i
+    endcapture
+    assign dg_scan_product = section.settings[dg_product_setting_key]
+
+    if dg_first_product_index == -1 and dg_scan_product != blank
+      assign dg_first_product_index = dg_i | minus: 1
+      assign dg_first_product = dg_scan_product
+
+      capture dg_highlight_setting_key
+        echo 'highlight_color_' | append: dg_i
+      endcapture
+      assign dg_initial_highlight = section.settings[dg_highlight_setting_key]
+    endif
+  endfor
+%}
+
+<section
+  id="Duftgalaxie-{{ section.id }}"
+  class="duftgalaxy"
+  style="
+    --dg-bg: {{ section.settings.background_color }};
+    --dg-header-bg: {{ section.settings.header_background_color }};
+    --dg-text: {{ section.settings.text_color }};
+    --dg-muted: {{ section.settings.muted_color }};
+    --dg-accent: {{ section.settings.accent_color }};
+    --dg-line: {{ section.settings.line_color }};
+    --dg-center: {{ section.settings.center_color }};
+    --dg-selector-bg: {{ section.settings.selector_background }};
+    --dg-selector-highlight: {{ dg_initial_highlight }};
+    --dg-info-text: {{ section.settings.info_text_color }};
+    --dg-max-width: {{ section.settings.max_width }}px;
+    --dg-body-edge-gap: max(24px, calc((100vw - var(--dg-max-width)) / 2));
+    --dg-active-index: {{ dg_first_product_index | at_least: 0 }};
+  "
+  data-duftgalaxy
+>
+  <div class="duftgalaxy__header-area">
+    <div class="duftgalaxy__header-inner">
+      {% if section.settings.eyebrow != blank %}
+        <p class="duftgalaxy__eyebrow">{{ section.settings.eyebrow | escape }}</p>
+      {% endif %}
+
+      {% if section.settings.heading != blank %}
+        <h2 class="duftgalaxy__heading">{{ section.settings.heading | escape }}</h2>
+      {% endif %}
+
+      {% if section.settings.intro != blank %}
+        <div class="duftgalaxy__intro rte">{{ section.settings.intro }}</div>
+      {% endif %}
+
+      <div class="duftgalaxy-mobile-visual" data-dg-mobile-visual aria-label="Produktdarstellung">
+        {% for dg_i in (1..3) %}
+          {% liquid
+            capture dg_mobile_product_setting_key
+              echo 'product_' | append: dg_i
+            endcapture
+            assign dg_mobile_product = section.settings[dg_mobile_product_setting_key]
+            assign dg_mobile_index = dg_i | minus: 1
+
+            capture dg_mobile_visual_size_setting_key
+              echo 'product_visual_size_' | append: dg_i
+            endcapture
+            assign dg_mobile_visual_size = section.settings[dg_mobile_visual_size_setting_key]
+
+            assign dg_mobile_visual = blank
+            if dg_mobile_product != blank
+              assign dg_mobile_visual_value = dg_mobile_product.metafields[dg_namespace][dg_product_visual_key].value
+              assign dg_mobile_visual = dg_mobile_visual_value.preview_image | default: dg_mobile_visual_value
+            endif
+          %}
+
+          {% if dg_mobile_product != blank %}
+            <div
+              class="duftgalaxy-mobile-visual__item{% if dg_mobile_index == dg_first_product_index %} is-active{% endif %}"
+              data-dg-mobile-visual-item
+              data-index="{{ dg_mobile_index }}"
+              style="--dg-mobile-visual-size: {{ dg_mobile_visual_size }}%;"
+              aria-hidden="{% if dg_mobile_index == dg_first_product_index %}false{% else %}true{% endif %}"
+            >
+              {% if dg_mobile_visual != blank %}
+                <a
+                  class="duftgalaxy-mobile-visual__link"
+                  href="{{ dg_mobile_product.url }}"
+                  aria-label="{{ dg_mobile_product.title | escape }} entdecken"
+                >
+                  {{
+                    dg_mobile_visual
+                    | image_url: width: 1200
+                    | image_tag:
+                      class: 'duftgalaxy-mobile-visual__image',
+                      widths: '240, 360, 540, 720, 900, 1200',
+                      sizes: '70vw',
+                      loading: 'eager',
+                      alt: dg_mobile_product.title
+                  }}
+                </a>
+              {% elsif request.design_mode %}
+                <span class="duftgalaxy-mobile-visual__placeholder">
+                  custom.produktdarstellung_schwarz fehlt
+                </span>
+              {% endif %}
+            </div>
+          {% endif %}
+        {% endfor %}
+
+        <button
+          type="button"
+          class="duftgalaxy-mobile-visual__arrow duftgalaxy-mobile-visual__arrow--prev"
+          data-dg-mobile-prev
+          aria-label="Vorherigen Duft anzeigen"
+        >
+          <span aria-hidden="true"></span>
+        </button>
+
+        <button
+          type="button"
+          class="duftgalaxy-mobile-visual__arrow duftgalaxy-mobile-visual__arrow--next"
+          data-dg-mobile-next
+          aria-label="Nächsten Duft anzeigen"
+        >
+          <span aria-hidden="true"></span>
+        </button>
+      </div>
+
+      <div
+        class="duftgalaxy-selector"
+        data-dg-selector
+        role="tablist"
+        aria-label="Duft auswählen"
+      >
+        <span class="duftgalaxy-selector__highlight" data-dg-highlight aria-hidden="true"></span>
+
+        {% for dg_i in (1..3) %}
+          {% liquid
+            capture dg_product_setting_key
+              echo 'product_' | append: dg_i
+            endcapture
+            assign dg_product = section.settings[dg_product_setting_key]
+
+            capture dg_highlight_setting_key
+              echo 'highlight_color_' | append: dg_i
+            endcapture
+            assign dg_highlight_color = section.settings[dg_highlight_setting_key]
+
+            capture dg_logo_size_setting_key
+              echo 'selector_logo_size_' | append: dg_i
+            endcapture
+            assign dg_selector_logo_size = section.settings[dg_logo_size_setting_key]
+
+            capture dg_logo_x_setting_key
+              echo 'selector_logo_x_' | append: dg_i
+            endcapture
+            assign dg_selector_logo_x = section.settings[dg_logo_x_setting_key]
+
+            capture dg_logo_y_setting_key
+              echo 'selector_logo_y_' | append: dg_i
+            endcapture
+            assign dg_selector_logo_y = section.settings[dg_logo_y_setting_key]
+
+            assign dg_index = dg_i | minus: 1
+            assign dg_dark_logo = blank
+            assign dg_active_logo = blank
+
+            if dg_product != blank
+              assign dg_dark_logo_value = dg_product.metafields[dg_namespace][dg_logo_dark_key].value
+              assign dg_dark_logo = dg_dark_logo_value.preview_image | default: dg_dark_logo_value
+
+              assign dg_active_logo_value = dg_product.metafields[dg_namespace][dg_logo_active_key].value
+              assign dg_active_logo = dg_active_logo_value.preview_image | default: dg_active_logo_value
+            endif
+          %}
+
+          <button
+            type="button"
+            class="duftgalaxy-selector__item{% if dg_index == dg_first_product_index %} is-active{% endif %}"
+            data-dg-selector-item
+            data-index="{{ dg_index }}"
+            data-highlight="{{ dg_highlight_color }}"
+            {% if dg_product != blank %}data-product-url="{{ dg_product.url | escape }}"{% endif %}
+            style="
+              --dg-selector-logo-scale: {{ dg_selector_logo_size | divided_by: 100.0 }};
+              --dg-selector-logo-x: {{ dg_selector_logo_x }}px;
+              --dg-selector-logo-y: {{ dg_selector_logo_y }}px;
+            "
+            role="tab"
+            id="DuftgalaxieTab-{{ section.id }}-{{ dg_index }}"
+            aria-controls="DuftgalaxiePanel-{{ section.id }}-{{ dg_index }}"
+            aria-selected="{% if dg_index == dg_first_product_index %}true{% else %}false{% endif %}"
+            {% if dg_product == blank %}disabled{% endif %}
+          >
+            {% if dg_product != blank %}
+              <span class="duftgalaxy-selector__logo-wrap">
+                {% if dg_dark_logo != blank %}
+                  {{
+                    dg_dark_logo
+                    | image_url: width: 700
+                    | image_tag:
+                      class: 'duftgalaxy-selector__logo duftgalaxy-selector__logo--dark',
+                      widths: '160, 240, 360, 500, 700',
+                      sizes: '(max-width: 749px) 27vw, 240px',
+                      loading: 'eager',
+                      fetchpriority: 'high',
+                      alt: dg_product.title
+                  }}
+                {% else %}
+                  <span class="duftgalaxy-selector__fallback duftgalaxy-selector__fallback--dark">
+                    {{ dg_product.title | escape }}
+                  </span>
+                {% endif %}
+
+                {% if dg_active_logo != blank %}
+                  {{
+                    dg_active_logo
+                    | image_url: width: 700
+                    | image_tag:
+                      class: 'duftgalaxy-selector__logo duftgalaxy-selector__logo--active',
+                      widths: '160, 240, 360, 500, 700',
+                      sizes: '(max-width: 749px) 27vw, 240px',
+                      loading: 'eager',
+                      fetchpriority: 'high',
+                      alt: ''
+                  }}
+                {% elsif dg_dark_logo != blank %}
+                  {{
+                    dg_dark_logo
+                    | image_url: width: 700
+                    | image_tag:
+                      class: 'duftgalaxy-selector__logo duftgalaxy-selector__logo--active',
+                      widths: '160, 240, 360, 500, 700',
+                      sizes: '(max-width: 749px) 27vw, 240px',
+                      loading: 'eager',
+                      fetchpriority: 'high',
+                      alt: ''
+                  }}
+                {% else %}
+                  <span class="duftgalaxy-selector__fallback duftgalaxy-selector__fallback--active">
+                    {{ dg_product.title | escape }}
+                  </span>
+                {% endif %}
+              </span>
+            {% elsif request.design_mode %}
+              <span class="duftgalaxy-selector__placeholder">Duft {{ dg_i }} wählen</span>
+            {% endif %}
+          </button>
+        {% endfor %}
+      </div>
+
+    </div>
+  </div>
+
+  {% if section.settings.show_product_link and dg_first_product != blank %}
+    <div class="duftgalaxy__cta-bridge">
+      <a
+        href="{{ dg_first_product.url }}"
+        class="duftgalaxy-product__link"
+        data-dg-product-link
+      >
+        {{ section.settings.product_link_text | default: 'Duft entdecken' | escape }}
+        <span aria-hidden="true">→</span>
+      </a>
+    </div>
+  {% endif %}
+
+  <div class="duftgalaxy__body">
+    <div class="duftgalaxy__body-inner">
+      {% if dg_first_product_index == -1 %}
+        {% if request.design_mode %}
+          <div class="duftgalaxy__empty">
+            <strong>Duftgalaxie: Noch keine Produkte ausgewählt.</strong>
+            <p>Wähle in den Section-Einstellungen bis zu drei Parfüms aus.</p>
+          </div>
+        {% endif %}
+      {% else %}
+        {% for dg_i in (1..3) %}
+          {% liquid
+            capture dg_product_setting_key
+              echo 'product_' | append: dg_i
+            endcapture
+            assign dg_product = section.settings[dg_product_setting_key]
+            assign dg_index = dg_i | minus: 1
+
+            capture dg_visual_size_setting_key
+              echo 'product_visual_size_' | append: dg_i
+            endcapture
+            assign dg_visual_size = section.settings[dg_visual_size_setting_key]
+
+            capture dg_visual_x_setting_key
+              echo 'product_visual_x_' | append: dg_i
+            endcapture
+            assign dg_visual_x = section.settings[dg_visual_x_setting_key]
+
+            capture dg_visual_y_setting_key
+              echo 'product_visual_y_' | append: dg_i
+            endcapture
+            assign dg_visual_y = section.settings[dg_visual_y_setting_key]
+
+            case dg_i
+              when 1
+                assign dg_center_logo_size = section.settings.center_logo_size_1
+                assign dg_center_logo_x = section.settings.center_logo_x_1
+                assign dg_center_logo_y = section.settings.center_logo_y_1
+              when 2
+                assign dg_center_logo_size = section.settings.center_logo_size_2
+                assign dg_center_logo_x = section.settings.center_logo_x_2
+                assign dg_center_logo_y = section.settings.center_logo_y_2
+              when 3
+                assign dg_center_logo_size = section.settings.center_logo_size_3
+                assign dg_center_logo_x = section.settings.center_logo_x_3
+                assign dg_center_logo_y = section.settings.center_logo_y_3
+            endcase
+          %}
+
+          {% if dg_product != blank %}
+            {% liquid
+              assign dg_components_metafield = dg_product.metafields[dg_namespace][dg_components_key]
+              assign dg_components = dg_components_metafield.value
+
+              assign dg_center_logo_value = dg_product.metafields[dg_namespace][dg_logo_dark_key].value
+              assign dg_center_logo = dg_center_logo_value.preview_image | default: dg_center_logo_value
+
+              assign dg_product_visual_value = dg_product.metafields[dg_namespace][dg_product_visual_key].value
+              assign dg_product_visual = dg_product_visual_value.preview_image | default: dg_product_visual_value
+              assign dg_product_visual_url = ''
+              if dg_product_visual != blank
+                assign dg_product_visual_url = dg_product_visual | image_url: width: 1800
+              endif
+            %}
+
+            <div
+              id="DuftgalaxiePanel-{{ section.id }}-{{ dg_index }}"
+              class="duftgalaxy-product{% if dg_index == dg_first_product_index %} is-active{% endif %} is-pending is-info-pending"
+              data-dg-product-panel
+              data-index="{{ dg_index }}"
+              role="tabpanel"
+              aria-labelledby="DuftgalaxieTab-{{ section.id }}-{{ dg_index }}"
+              {% unless dg_index == dg_first_product_index %}hidden{% endunless %}
+            >
+              <div class="duftgalaxy-layout">
+                <div
+                  class="duftgalaxy-product-visual"
+                  data-dg-product-visual
+                  data-image-url="{{ dg_product_visual_url | escape }}"
+                  style="
+                    --dg-visual-size: {{ dg_visual_size }}%;
+                    --dg-visual-x: {{ dg_visual_x }}px;
+                    --dg-visual-y: {{ dg_visual_y }}px;
+                  "
+                >
+                  {% if dg_product_visual != blank %}
+                    <div
+                      class="duftgalaxy-product-visual__mover"
+                      data-dg-product-visual-mover
+                    >
+                      <a
+                        class="duftgalaxy-product-visual__link"
+                        href="{{ dg_product.url }}"
+                        aria-label="{{ dg_product.title | escape }} entdecken"
+                      >
+                        {{
+                          dg_product_visual
+                          | image_url: width: 1800
+                          | image_tag:
+                            class: 'duftgalaxy-product-visual__image',
+                            widths: '360, 540, 720, 900, 1200, 1500, 1800',
+                            sizes: '(min-width: 990px) 33vw, (max-width: 749px) 80vw, 70vw',
+                            loading: 'eager',
+                            alt: dg_product.title
+                        }}
+                      </a>
+                    </div>
+                  {% elsif request.design_mode %}
+                    <span class="duftgalaxy-product-visual__placeholder">
+                      custom.produktdarstellung_schwarz fehlt
+                    </span>
+                  {% endif %}
+                </div>
+
+                <div
+                  class="duftgalaxy-orbit duftgalaxy-orbit--animation-pending"
+                  data-dg-orbit
+                  aria-label="Duftorbit für {{ dg_product.title | escape }}"
+                >
+                  <span class="duftgalaxy-orbit__ring duftgalaxy-orbit__ring--outer" aria-hidden="true"></span>
+                  <span class="duftgalaxy-orbit__ring duftgalaxy-orbit__ring--middle" aria-hidden="true"></span>
+                  <span class="duftgalaxy-orbit__ring duftgalaxy-orbit__ring--inner" aria-hidden="true"></span>
+
+                  <div class="duftgalaxy-orbit__core" data-dg-core>
+                    {% if dg_center_logo != blank %}
+                      <div
+                        class="duftgalaxy-orbit__core-logo-shell"
+                        style="
+                          --dg-core-logo-size: {{ dg_center_logo_size | default: 65 }}%;
+                          --dg-core-logo-x: {{ dg_center_logo_x | default: 0 }}px;
+                          --dg-core-logo-y: {{ dg_center_logo_y | default: 0 }}px;
+                        "
+                      >
+                        {{
+                          dg_center_logo
+                          | image_url: width: 900
+                          | image_tag:
+                            class: 'duftgalaxy-orbit__core-logo',
+                            widths: '180, 240, 360, 480, 600, 900',
+                            sizes: '(max-width: 749px) 24vw, 170px',
+                            loading: 'eager',
+                            fetchpriority: 'high',
+                            alt: dg_product.title
+                        }}
+                      </div>
+                    {% else %}
+                      <span class="duftgalaxy-orbit__core-fallback">{{ dg_product.title | escape }}</span>
+                    {% endif %}
+                  </div>
+
+                  {% if dg_components != blank %}
+                    {% for component in dg_components limit: 8 %}
+                      {% liquid
+                        assign note_reference_field = component[dg_component_note_key]
+                        assign note = note_reference_field.value
+
+                        assign note_name_field = note[dg_note_name_key]
+                        assign note_name = note_name_field.value
+
+                        assign note_description_field = note[dg_note_description_key]
+                        assign note_description = note_description_field.value
+
+                        assign note_image_field = note[dg_note_image_key]
+                        assign note_image = note_image_field.value
+                        assign note_image_source = note_image.preview_image | default: note_image
+                        assign note_image_url = ''
+
+                        if note_image_source != blank
+                          assign note_image_url = note_image_source | image_url: width: 1400
+                        endif
+
+                        assign note_color_field = note[dg_note_color_key]
+                        assign note_display_color = note_color_field.value | default: section.settings.accent_color
+
+                        assign intensity_field = component[dg_component_intensity_key]
+                        assign intensity = intensity_field.value | downcase | strip
+
+                        assign task_field = component[dg_component_task_key]
+                        assign task = task_field.value | downcase | strip
+
+                        assign bubble_size = 82
+                        assign intensity_label = intensity | capitalize
+
+                        case intensity
+                          when 'dominant'
+                            assign bubble_size = 112
+                            assign intensity_label = 'Dominant'
+                          when 'prägend'
+                            assign bubble_size = 98
+                            assign intensity_label = 'Prägend'
+                          when 'praegend'
+                            assign bubble_size = 98
+                            assign intensity_label = 'Prägend'
+                          when 'wahrnehmbar'
+                            assign bubble_size = 84
+                            assign intensity_label = 'Wahrnehmbar'
+                          when 'subtil'
+                            assign bubble_size = 70
+                            assign intensity_label = 'Subtil'
+                        endcase
+
+                        assign ring = 'middle'
+                        assign task_label = task | capitalize
+
+                        case task
+                          when 'hauptnote'
+                            assign ring = 'inner'
+                            assign task_label = 'Hauptnote'
+                          when 'begleitnote'
+                            assign ring = 'middle'
+                            assign task_label = 'Begleitnote'
+                          when 'akzent'
+                            assign ring = 'outer'
+                            assign task_label = 'Akzent'
+                        endcase
+
+                        assign slot = forloop.index
+                        assign x = 50
+                        assign y = 50
+
+                        if ring == 'inner'
+                          case slot
+                            when 1
+                              assign x = 50
+                              assign y = 28
+                            when 2
+                              assign x = 50
+                              assign y = 72
+                            when 3
+                              assign x = 72
+                              assign y = 50
+                            when 4
+                              assign x = 28
+                              assign y = 50
+                            when 5
+                              assign x = 66
+                              assign y = 34
+                            when 6
+                              assign x = 34
+                              assign y = 66
+                            when 7
+                              assign x = 66
+                              assign y = 66
+                            when 8
+                              assign x = 34
+                              assign y = 34
+                          endcase
+                        elsif ring == 'outer'
+                          case slot
+                            when 1
+                              assign x = 50
+                              assign y = 9
+                            when 2
+                              assign x = 50
+                              assign y = 91
+                            when 3
+                              assign x = 91
+                              assign y = 50
+                            when 4
+                              assign x = 9
+                              assign y = 50
+                            when 5
+                              assign x = 80
+                              assign y = 20
+                            when 6
+                              assign x = 20
+                              assign y = 80
+                            when 7
+                              assign x = 80
+                              assign y = 80
+                            when 8
+                              assign x = 20
+                              assign y = 20
+                          endcase
+                        else
+                          case slot
+                            when 1
+                              assign x = 50
+                              assign y = 18
+                            when 2
+                              assign x = 50
+                              assign y = 82
+                            when 3
+                              assign x = 82
+                              assign y = 50
+                            when 4
+                              assign x = 18
+                              assign y = 50
+                            when 5
+                              assign x = 73
+                              assign y = 27
+                            when 6
+                              assign x = 27
+                              assign y = 73
+                            when 7
+                              assign x = 73
+                              assign y = 73
+                            when 8
+                              assign x = 27
+                              assign y = 27
+                          endcase
+                        endif
+                      %}
+
+                      {% if note_name != blank %}
+                        <button
+                          type="button"
+                          class="duftgalaxy-orbit__note duftgalaxy-orbit__note--{{ ring }}{% if note_image_url != blank %} has-image{% endif %}"
+                          style="
+                            --note-x: {{ x }}%;
+                            --note-y: {{ y }}%;
+                            --note-size: {{ bubble_size }}px;
+                            --note-color: {{ note_display_color }};
+                            {% if note_image_url != blank %}--note-image: url('{{ note_image_url }}');{% endif %}
+                          "
+                          data-dg-note
+                          data-name="{{ note_name | escape }}"
+                          data-description="{{ note_description | strip_html | escape }}"
+                          data-background="{{ note_image_url | escape }}"
+                          data-intensity="{{ intensity_label | escape }}"
+                          data-task="{{ task_label | escape }}"
+                          aria-label="{{ note_name | escape }}, {{ task_label | escape }}, {{ intensity_label | escape }}"
+                          aria-pressed="false"
+                        ></button>
+                      {% endif %}
+                    {% endfor %}
+                  {% endif %}
+                </div>
+
+                <aside
+                  class="duftgalaxy-info"
+                  data-dg-info
+                  aria-live="polite"
+                  style="--dg-info-overlay: {{ section.settings.info_overlay_opacity | divided_by: 100.0 }};"
+                >
+                  <div class="duftgalaxy-info__content">
+                    <h3 class="duftgalaxy-info__title" data-dg-info-title>Duftnote auswählen</h3>
+                    <p class="duftgalaxy-info__description" data-dg-info-description>
+                      Fahre mit der Maus über eine Duftnote oder tippe sie an, um mehr zu erfahren.
+                    </p>
+
+                    <div class="duftgalaxy-info__badges" data-dg-info-badges hidden>
+                      <span data-dg-info-task></span>
+                      <span data-dg-info-intensity></span>
+                    </div>
+                  </div>
+                </aside>
+              </div>
+
+            </div>
+          {% endif %}
+        {% endfor %}
+      {% endif %}
+    </div>
+  </div>
+</section>
+
+{% style %}
+  #Duftgalaxie-{{ section.id }} {
+    position: relative;
+    left: 50%;
+    width: 100vw;
+    max-width: 100vw;
+    margin-right: -50vw;
+    margin-left: -50vw;
+    padding: 0;
+    overflow-x: clip;
+    color: var(--dg-text);
+    background: var(--dg-bg);
+  }
+
+  @supports (width: 100dvw) {
+    #Duftgalaxie-{{ section.id }} {
+      width: 100dvw;
+      max-width: 100dvw;
+      margin-right: -50dvw;
+      margin-left: -50dvw;
+    }
+  }
+
+  #Duftgalaxie-{{ section.id }},
+  #Duftgalaxie-{{ section.id }} *,
+  #Duftgalaxie-{{ section.id }} *::before,
+  #Duftgalaxie-{{ section.id }} *::after {
+    box-sizing: border-box;
+  }
+
+  #Duftgalaxie-{{ section.id }} {
+    touch-action: pan-y;
+  }
+
+  #Duftgalaxie-{{ section.id }} .duftgalaxy__header-area {
+    width: 100%;
+    padding-top: {{ section.settings.padding_top }}px;
+    padding-bottom: 0;
+    background: var(--dg-header-bg);
+  }
+
+  #Duftgalaxie-{{ section.id }} .duftgalaxy__header-inner {
+    width: min(calc(100% - 48px), 1050px);
+    margin: 0 auto;
+    text-align: center;
+  }
+
+  #Duftgalaxie-{{ section.id }} .duftgalaxy__eyebrow {
+    margin: 0 0 .7rem;
+    color: var(--dg-accent);
+    font-size: 1rem;
+    font-weight: 600;
+    letter-spacing: .16em;
+    text-transform: uppercase;
+  }
+
+  #Duftgalaxie-{{ section.id }} .duftgalaxy__heading {
+    margin: 0;
+    color: var(--dg-text);
+    font-size: clamp(2.8rem, 5vw, 5rem);
+    line-height: 1.04;
+  }
+
+  #Duftgalaxie-{{ section.id }} .duftgalaxy__intro {
+    max-width: 720px;
+    margin: 1rem auto 0;
+    color: var(--dg-muted);
+    font-size: clamp(1rem, 1.25vw, 1.2rem);
+  }
+
+  #Duftgalaxie-{{ section.id }} .duftgalaxy-mobile-visual {
+    display: none;
+  }
+
+  #Duftgalaxie-{{ section.id }} .duftgalaxy-mobile-visual__arrow {
+    display: none;
+  }
+
+  #Duftgalaxie-{{ section.id }} .duftgalaxy-selector {
+    position: relative;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    width: min(100%, {{ section.settings.selector_max_width }}px);
+    min-height: {{ section.settings.selector_height }}px;
+    margin: clamp(2rem, 4vw, 3.5rem) auto 0;
+    padding: {{ section.settings.selector_inset }}px;
+    overflow: hidden;
+    border-radius: {{ section.settings.selector_radius }}px;
+    background: var(--dg-selector-bg);
+    isolation: isolate;
+  }
+
+  #Duftgalaxie-{{ section.id }} .duftgalaxy-selector__highlight {
+    position: absolute;
+    z-index: 0;
+    top: {{ section.settings.selector_inset }}px;
+    bottom: {{ section.settings.selector_inset }}px;
+    left: {{ section.settings.selector_inset }}px;
+    width: calc((100% - {{ section.settings.selector_inset | times: 2 }}px) / 3);
+    border-radius: {{ section.settings.selector_inner_radius }}px;
+    background: var(--dg-selector-highlight);
+    transform: translateX(calc(var(--dg-active-index) * 100%));
+    transition:
+      transform 650ms cubic-bezier(.16, 1, .3, 1),
+      background-color 650ms cubic-bezier(.16, 1, .3, 1);
+    will-change: transform, background-color;
+  }
+
+  #Duftgalaxie-{{ section.id }} .duftgalaxy-selector__item {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    min-width: 0;
+    min-height: calc({{ section.settings.selector_height }}px - {{ section.settings.selector_inset | times: 2 }}px);
+    padding: .7rem clamp(.55rem, 1.5vw, 1.25rem);
+    align-items: center;
+    justify-content: center;
+    border: 0;
+    background: transparent;
+    color: inherit;
+    cursor: pointer;
+  }
+
+  #Duftgalaxie-{{ section.id }} .duftgalaxy-selector__item:disabled {
+    cursor: default;
+    opacity: .3;
+  }
+
+  #Duftgalaxie-{{ section.id }} .duftgalaxy-selector__logo-wrap {
+    position: relative;
+    display: block;
+    width: min(82%, 230px);
+    height: clamp(34px, 4.2vw, 58px);
+    transform:
+      translate(var(--dg-selector-logo-x, 0px), var(--dg-selector-logo-y, 0px))
+      scale(var(--dg-selector-logo-scale, 1));
+    transform-origin: center;
+    transition: transform 300ms ease;
+  }
+
+  #Duftgalaxie-{{ section.id }} .duftgalaxy-selector__logo {
+    position: absolute;
+    inset: 0;
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    transition:
+      opacity 360ms ease,
+      transform 650ms cubic-bezier(.16, 1, .3, 1);
+  }
+
+  #Duftgalaxie-{{ section.id }} .duftgalaxy-selector__logo--dark {
+    opacity: 1;
+  }
+
+  #Duftgalaxie-{{ section.id }} .duftgalaxy-selector__logo--active {
+    opacity: 0;
+  }
+
+  #Duftgalaxie-{{ section.id }} .duftgalaxy-selector__item.is-active .duftgalaxy-selector__logo--dark {
+    opacity: 0;
+  }
+
+  #Duftgalaxie-{{ section.id }} .duftgalaxy-selector__item.is-active .duftgalaxy-selector__logo--active {
+    opacity: 1;
+  }
+
+  #Duftgalaxie-{{ section.id }} .duftgalaxy-selector__item:not(.is-active):hover .duftgalaxy-selector__logo {
+    transform: scale(1.035);
+  }
+
+  #Duftgalaxie-{{ section.id }} .duftgalaxy-selector__fallback {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: clamp(.8rem, 1.2vw, 1rem);
+    font-weight: 600;
+    letter-spacing: .09em;
+    text-transform: uppercase;
+    transition: opacity 360ms ease;
+  }
+
+  #Duftgalaxie-{{ section.id }} .duftgalaxy-selector__fallback--dark {
+    color: #111;
+    opacity: 1;
+  }
+
+  #Duftgalaxie-{{ section.id }} .duftgalaxy-selector__fallback--active {
+    color: var(--dg-text);
+    opacity: 0;
+  }
+
+  #Duftgalaxie-{{ section.id }} .duftgalaxy-selector__item.is-active .duftgalaxy-selector__fallback--dark {
+    opacity: 0;
+  }
+
+  #Duftgalaxie-{{ section.id }} .duftgalaxy-selector__item.is-active .duftgalaxy-selector__fallback--active {
+    opacity: 1;
+  }
+
+  #Duftgalaxie-{{ section.id }} .duftgalaxy-selector__placeholder {
+    font-size: .85rem;
+  }
+
+  #Duftgalaxie-{{ section.id }} .duftgalaxy__cta-bridge {
+    display: flex;
+    width: 100%;
+    height: clamp(96px, 8vw, 138px);
+    align-items: center;
+    justify-content: center;
+    background: var(--dg-bg);
+  }
+
+  #Duftgalaxie-{{ section.id }} .duftgalaxy__body {
+    width: 100%;
+    padding-top: 0;
+    padding-bottom: 0;
+    background: var(--dg-bg);
+  }
+
+  #Duftgalaxie-{{ section.id }} .duftgalaxy__body-inner {
+    width: 100%;
+    max-width: none;
+    margin: 0;
+  }
+
+  #Duftgalaxie-{{ section.id }} .duftgalaxy-product[hidden] {
+    display: none !important;
+  }
+
+  #Duftgalaxie-{{ section.id }} .duftgalaxy-layout {
+    display: grid;
+    width: 100%;
+    overflow: hidden;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0;
+    align-items: stretch;
+  }
+
+  #Duftgalaxie-{{ section.id }} .duftgalaxy-product-visual {
+    position: relative;
+    display: flex;
+    width: 100%;
+    min-width: 0;
+    min-height: 100%;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    background: var(--dg-bg);
+  }
+
+  #Duftgalaxie-{{ section.id }} .duftgalaxy-product-visual__mover {
+    display: flex;
+    width: var(--dg-visual-size, 80%);
+    max-width: none;
+    max-height: 92%;
+    align-items: center;
+    justify-content: center;
+    transform: translate(var(--dg-visual-x, 0px), var(--dg-visual-y, 0px));
+    transform-origin: center;
+    will-change: transform, opacity;
+  }
+
+  #Duftgalaxie-{{ section.id }} .duftgalaxy-product-visual__link {
+    display: block;
+    width: 100%;
+    max-width: 100%;
+    color: inherit;
+    text-decoration: none;
+    transform: translateY(0) scale(1);
+    transform-origin: center;
+    cursor: pointer;
+    transition:
+      transform 520ms cubic-bezier(0.16, 1, 0.3, 1),
+      filter 520ms cubic-bezier(0.16, 1, 0.3, 1);
+    will-change: transform;
+  }
+
+  #Duftgalaxie-{{ section.id }} .duftgalaxy-product-visual__link:hover,
+  #Duftgalaxie-{{ section.id }} .duftgalaxy-product-visual__link:focus-visible {
+    transform: translateY(-6px) scale(1.05);
+    filter: brightness(1.035);
+  }
+
+  #Duftgalaxie-{{ section.id }} .duftgalaxy-product-visual__link:focus-visible {
+    outline: 1px solid color-mix(in srgb, var(--dg-accent) 75%, transparent);
+    outline-offset: 8px;
+  }
+
+  #Duftgalaxie-{{ section.id }} .duftgalaxy-product-visual__image {
+    display: block;
+    width: 100%;
+    max-width: 100%;
+    height: auto;
+    max-height: 100%;
+    object-fit: contain;
+  }
+
+  #Duftgalaxie-{{ section.id }} .duftgalaxy-product-visual__placeholder {
+    padding: 1rem;
+    color: var(--dg-muted);
+    font-size: .8rem;
+    text-align: center;
+  }
+
+  #Duftgalaxie-{{ section.id }} .duftgalaxy-product.is-pending .duftgalaxy-product-visual__mover {
+    opacity: 0;
+  }
+
+  #Duftgalaxie-{{ section.id }} .duftgalaxy-orbit {
+    position: relative;
+    align-self: center;
+    width: min(100%, 650px);
+    aspect-ratio: 1;
+    margin: 0 auto;
+    isolation: isolate;
+  }
+
+  #Duftgalaxie-{{ section.id }} .duftgalaxy-orbit__ring {
+    position: absolute;
+    z-index: 0;
+    top: 50%;
+    left: 50%;
+    border: 2px solid var(--dg-line);
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+  }
+
+  #Duftgalaxie-{{ section.id }} .duftgalaxy-orbit__ring--outer {
+    width: 88%;
+    height: 88%;
+  }
+
+  #Duftgalaxie-{{ section.id }} .duftgalaxy-orbit__ring--middle {
+    width: 64%;
+    height: 64%;
+  }
+
+  #Duftgalaxie-{{ section.id }} .duftgalaxy-orbit__ring--inner {
+    width: 42%;
+    height: 42%;
+  }
+
+  #Duftgalaxie-{{ section.id }} .duftgalaxy-orbit__core {
+    position: absolute;
+    z-index: 2;
+    top: 50%;
+    left: 50%;
+    display: flex;
+    width: min(29%, 170px);
+    aspect-ratio: 1;
+    padding: 1rem;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    border: 1px solid color-mix(in srgb, var(--dg-accent) 70%, transparent);
+    border-radius: 50%;
+    background: var(--dg-center);
+    transform: translate(-50%, -50%);
+  }
+
+  #Duftgalaxie-{{ section.id }} .duftgalaxy-orbit__core-logo-shell {
+    position: absolute;
+    z-index: 1;
+    top: 50%;
+    left: 50%;
+    width: calc(var(--dg-core-logo-size, 65%) * 2);
+    max-width: 400%;
+    transform: translate(
+      calc(-50% + var(--dg-core-logo-x, 0px)),
+      calc(-50% + var(--dg-core-logo-y, 0px))
+    );
+    pointer-events: none;
+  }
+
+  #Duftgalaxie-{{ section.id }} .duftgalaxy-orbit__core-logo {
+    display: block;
+    width: 100% !important;
+    max-width: none !important;
+    height: auto;
+    max-height: none;
+    object-fit: contain;
+  }
+
+  #Duftgalaxie-{{ section.id }} .duftgalaxy-orbit__core-fallback {
+    max-width: 100%;
+    font-size: .9rem;
+    text-align: center;
+  }
+
+  #Duftgalaxie-{{ section.id }} .duftgalaxy-orbit__note {
+    position: absolute;
+    z-index: 3;
+    top: var(--note-y);
+    left: var(--note-x);
+    display: flex;
+    width: min(var(--note-size), 24vw);
+    aspect-ratio: 1;
+    padding: .7rem;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    overflow: visible;
+    border: 1px solid color-mix(in srgb, var(--note-color) 72%, var(--dg-accent));
+    border-radius: 50%;
+    background-color: var(--note-color);
+    background-position: center;
+    background-repeat: no-repeat;
+    background-size: cover;
+    box-shadow: 0 0 0 5px color-mix(in srgb, var(--dg-bg) 72%, transparent);
+    transform: translate(-50%, -50%);
+    cursor: pointer;
+    transition:
+      transform .22s ease,
+      filter .22s ease,
+      border-color .22s ease;
+  }
+
+  #Duftgalaxie-{{ section.id }} .duftgalaxy-orbit__note.has-image {
+    background-image: var(--note-image);
+  }
+
+  #Duftgalaxie-{{ section.id }} .duftgalaxy-orbit__note:hover,
+  #Duftgalaxie-{{ section.id }} .duftgalaxy-orbit__note:focus-visible,
+  #Duftgalaxie-{{ section.id }} .duftgalaxy-orbit__note[aria-pressed="true"] {
+    z-index: 5;
+    transform: translate(-50%, -50%) scale(1.06);
+  }
+
+  #Duftgalaxie-{{ section.id }} .duftgalaxy-orbit__note.has-image:hover,
+  #Duftgalaxie-{{ section.id }} .duftgalaxy-orbit__note.has-image:focus-visible,
+  #Duftgalaxie-{{ section.id }} .duftgalaxy-orbit__note.has-image[aria-pressed="true"] {
+    filter: saturate(1.08) contrast(1.04) brightness(1.04);
+  }
+
+  #Duftgalaxie-{{ section.id }} .duftgalaxy-orbit--animation-pending .duftgalaxy-orbit__ring {
+    opacity: 0;
+  }
+
+  #Duftgalaxie-{{ section.id }} .duftgalaxy-orbit--animation-pending .duftgalaxy-orbit__note {
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  #Duftgalaxie-{{ section.id }} .duftgalaxy-product.is-pending .duftgalaxy-orbit__core-logo,
+  #Duftgalaxie-{{ section.id }} .duftgalaxy-product.is-pending .duftgalaxy-orbit__core-fallback {
+    opacity: 0;
+    transform: scale(.12);
+  }
+
+  #Duftgalaxie-{{ section.id }} .duftgalaxy-orbit--animation-pending .duftgalaxy-orbit__ring.is-arrived,
+  #Duftgalaxie-{{ section.id }} .duftgalaxy-orbit--animation-pending .duftgalaxy-orbit__note.is-arrived {
+    opacity: 1;
+  }
+
+  #Duftgalaxie-{{ section.id }} .duftgalaxy-info {
+    position: relative;
+    display: flex;
+    width: 90%;
+    max-width: none;
+    min-width: 0;
+    min-height: 100%;
+    height: 100%;
+    margin-right: 0;
+    margin-left: auto;
+    justify-self: end;
+    padding: clamp(1.8rem, 3vw, 3rem);
+    padding-left: clamp(2.7rem, 4.5vw, 4.5rem);
+    overflow: hidden;
+    align-items: flex-start;
+    justify-content: center;
+    flex-direction: column;
+    text-align: left;
+    color: var(--dg-info-text);
+    border: 0;
+    background-color: color-mix(in srgb, var(--dg-bg) 82%, white 18%);
+    background-image:
+      linear-gradient(
+        rgba(0, 0, 0, var(--dg-info-overlay)),
+        rgba(0, 0, 0, var(--dg-info-overlay))
+      ),
+      var(--dg-info-bg-image, none);
+    background-position: center;
+    background-repeat: no-repeat;
+    background-size: cover;
+    clip-path: inset(0 0 0 0);
+    isolation: isolate;
+  }
+
+  #Duftgalaxie-{{ section.id }} .duftgalaxy-product.is-info-pending .duftgalaxy-info {
+    opacity: 0;
+    clip-path: inset(0 0 0 100%);
+    transform: translateX(8%);
+  }
+
+  #Duftgalaxie-{{ section.id }} .duftgalaxy-info__content {
+    position: relative;
+    z-index: 1;
+    width: min(100%, 620px);
+  }
+
+  #Duftgalaxie-{{ section.id }} .duftgalaxy-info__title {
+    margin: 0;
+    color: inherit;
+    font-size: clamp(2rem, 3vw, 3.2rem);
+    line-height: 1.1;
+  }
+
+  #Duftgalaxie-{{ section.id }} .duftgalaxy-info__description {
+    min-height: 0;
+    max-width: 58ch;
+    margin: 1.5rem 0 0;
+    color: inherit;
+    line-height: 1.55;
+  }
+
+  #Duftgalaxie-{{ section.id }} .duftgalaxy-info__badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .7rem;
+    justify-content: flex-start;
+    margin-top: 1.5rem;
+  }
+
+  #Duftgalaxie-{{ section.id }} .duftgalaxy-info__badges[hidden] {
+    display: none !important;
+  }
+
+  #Duftgalaxie-{{ section.id }} .duftgalaxy-info__badges span {
+    display: inline-flex;
+    padding: .45rem .8rem;
+    border: 1px solid color-mix(in srgb, currentColor 72%, transparent);
+    border-radius: 999px;
+    align-items: center;
+    font-size: 1.1rem;
+    line-height: 1;
+    background: rgba(0, 0, 0, .16);
+  }
+
+  #Duftgalaxie-{{ section.id }} .duftgalaxy-product__link {
+    display: inline-flex;
+    gap: .75rem;
+    align-items: center;
+    color: var(--dg-text);
+    font-size: .92rem;
+    font-weight: 600;
+    letter-spacing: .1em;
+    text-decoration: none;
+    text-transform: uppercase;
+  }
+
+  #Duftgalaxie-{{ section.id }} .duftgalaxy-product__link span {
+    transition: transform .25s ease;
+  }
+
+  #Duftgalaxie-{{ section.id }} .duftgalaxy-product__link:hover span {
+    transform: translateX(5px);
+  }
+
+  #Duftgalaxie-{{ section.id }} .duftgalaxy__empty {
+    padding: 2rem;
+    border: 1px dashed currentColor;
+  }
+
+  @media screen and (max-width: 989px) {
+    /*
+      Wichtig: In diesem Breakpoint darf der Body nicht mehr auf die
+      Desktop-Maximalbreite begrenzt sein. Sonst bleibt rechts/links ein
+      schwarzer Rand – besonders bei Browser-Zoom oder Windows-Skalierung.
+    */
+    #Duftgalaxie-{{ section.id }} .duftgalaxy__body-inner {
+      width: 100%;
+      max-width: none;
+      margin: 0;
+    }
+
+    #Duftgalaxie-{{ section.id }} .duftgalaxy-layout {
+      width: 100%;
+      grid-template-columns: 1fr;
+      gap: 1.4rem;
+    }
+
+    #Duftgalaxie-{{ section.id }} .duftgalaxy-product-visual {
+      width: 100%;
+      min-height: 360px;
+    }
+
+    #Duftgalaxie-{{ section.id }} .duftgalaxy-product-visual__mover {
+      width: min(var(--dg-visual-size, 80%), 760px);
+      max-height: 330px;
+    }
+
+    #Duftgalaxie-{{ section.id }} .duftgalaxy-info {
+      width: 100% !important;
+      max-width: none !important;
+      min-height: 420px;
+      height: auto;
+      margin: 0 !important;
+    }
+  }
+
+  @media screen and (max-width: 749px) {
+    #Duftgalaxie-{{ section.id }} .duftgalaxy__cta-bridge {
+      height: 72px;
+      min-height: 72px;
+      margin: 0;
+      padding: 0 18px;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+    }
+
+    #Duftgalaxie-{{ section.id }} .duftgalaxy__header-inner {
+      width: 100%;
+      padding-right: 18px;
+      padding-left: 18px;
+      text-align: center;
+    }
+
+    #Duftgalaxie-{{ section.id }} .duftgalaxy__intro {
+      margin-right: auto;
+      margin-left: auto;
+      text-align: center;
+    }
+
+    #Duftgalaxie-{{ section.id }} .duftgalaxy-selector {
+      width: 100%;
+      min-height: {{ section.settings.selector_height_mobile }}px;
+      margin-top: 2rem;
+      padding: {{ section.settings.selector_inset_mobile }}px;
+      border-radius: {{ section.settings.selector_radius_mobile }}px;
+    }
+
+    #Duftgalaxie-{{ section.id }} .duftgalaxy-selector__highlight {
+      top: {{ section.settings.selector_inset_mobile }}px;
+      bottom: {{ section.settings.selector_inset_mobile }}px;
+      left: {{ section.settings.selector_inset_mobile }}px;
+      width: calc((100% - {{ section.settings.selector_inset_mobile | times: 2 }}px) / 3);
+      border-radius: {{ section.settings.selector_inner_radius_mobile }}px;
+    }
+
+    #Duftgalaxie-{{ section.id }} .duftgalaxy-selector__item {
+      min-height: calc({{ section.settings.selector_height_mobile }}px - {{ section.settings.selector_inset_mobile | times: 2 }}px);
+      padding: .45rem .35rem;
+    }
+
+    #Duftgalaxie-{{ section.id }} .duftgalaxy-selector__logo-wrap {
+      width: 86%;
+      height: clamp(26px, 8vw, 38px);
+    }
+
+    #Duftgalaxie-{{ section.id }} .duftgalaxy__body-inner {
+      width: 100%;
+      max-width: none;
+      margin: 0;
+    }
+
+    /*
+      Mobile Reihenfolge:
+      Produktbild sitzt separat oberhalb des Selectors.
+      Im Inhaltsbereich folgt zuerst der Orbit und darunter die Infobox.
+    */
+    #Duftgalaxie-{{ section.id }} .duftgalaxy-mobile-visual {
+      position: relative;
+      display: block;
+      width: 100%;
+      height: 220px;
+      margin: 1rem auto .65rem;
+      overflow: hidden;
+    }
+
+    #Duftgalaxie-{{ section.id }} .duftgalaxy-mobile-visual__item {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      transform: translate3d(0, 0, 0);
+      pointer-events: none;
+      will-change: transform, opacity;
+      backface-visibility: hidden;
+    }
+
+    #Duftgalaxie-{{ section.id }} .duftgalaxy-mobile-visual__item.is-active {
+      opacity: 1;
+      transform: translate3d(0, 0, 0);
+      pointer-events: auto;
+    }
+
+    #Duftgalaxie-{{ section.id }} .duftgalaxy-mobile-visual__link {
+      display: flex;
+      width: min(var(--dg-mobile-visual-size, 80%), 78vw);
+      max-width: 330px;
+      height: 100%;
+      align-items: center;
+      justify-content: center;
+      text-decoration: none;
+    }
+
+    #Duftgalaxie-{{ section.id }} .duftgalaxy-mobile-visual__image {
+      display: block;
+      width: 100%;
+      max-width: 100%;
+      max-height: 210px;
+      height: auto;
+      object-fit: contain;
+    }
+
+    #Duftgalaxie-{{ section.id }} .duftgalaxy-mobile-visual__placeholder {
+      color: var(--dg-muted);
+      font-size: .8rem;
+      text-align: center;
+    }
+
+    #Duftgalaxie-{{ section.id }} .duftgalaxy-mobile-visual__arrow {
+      position: absolute;
+      z-index: 8;
+      top: 50%;
+      display: flex;
+      width: 44px;
+      height: 54px;
+      padding: 0;
+      align-items: center;
+      justify-content: center;
+      border: 0;
+      background: transparent;
+      color: #ffffff;
+      cursor: pointer;
+      transform: translateY(-50%);
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    #Duftgalaxie-{{ section.id }} .duftgalaxy-mobile-visual__arrow--prev {
+      left: 7px;
+    }
+
+    #Duftgalaxie-{{ section.id }} .duftgalaxy-mobile-visual__arrow--next {
+      right: 7px;
+    }
+
+    #Duftgalaxie-{{ section.id }} .duftgalaxy-mobile-visual__arrow span {
+      display: block;
+      width: 16px;
+      height: 16px;
+      border-bottom: 2px solid currentColor;
+      border-left: 2px solid currentColor;
+      filter: drop-shadow(0 1px 2px rgba(0, 0, 0, .65));
+    }
+
+    #Duftgalaxie-{{ section.id }} .duftgalaxy-mobile-visual__arrow--prev span {
+      transform: rotate(45deg);
+    }
+
+    #Duftgalaxie-{{ section.id }} .duftgalaxy-mobile-visual__arrow--next span {
+      transform: rotate(225deg);
+    }
+
+    #Duftgalaxie-{{ section.id }} .duftgalaxy-mobile-visual__arrow:focus-visible {
+      outline: 1px solid currentColor;
+      outline-offset: -5px;
+      border-radius: 999px;
+    }
+
+    #Duftgalaxie-{{ section.id }} .duftgalaxy-selector {
+      margin-top: .65rem;
+    }
+
+    #Duftgalaxie-{{ section.id }} .duftgalaxy-layout {
+      display: grid;
+      width: 100%;
+      grid-template-columns: 1fr;
+      grid-template-areas:
+        "orbit"
+        "info";
+      gap: 0;
+      align-items: stretch;
+      overflow: hidden;
+    }
+
+    #Duftgalaxie-{{ section.id }} .duftgalaxy-orbit {
+      grid-area: orbit;
+      width: 88vw;
+      max-width: 430px;
+      margin-right: auto;
+      margin-left: auto;
+      margin-bottom: 1.2rem;
+    }
+
+    /*
+      Das Desktop-Produktbild bleibt im Markup, wird mobil aber nicht
+      im Inhaltsbereich angezeigt. X/Y-Verschiebungen spielen mobil
+      dadurch keine Rolle.
+    */
+    #Duftgalaxie-{{ section.id }} .duftgalaxy-product-visual {
+      display: none !important;
+    }
+
+    @supports (width: 100dvw) {
+      #Duftgalaxie-{{ section.id }} .duftgalaxy-orbit {
+        width: 88dvw;
+      }
+    }
+
+    #Duftgalaxie-{{ section.id }} .duftgalaxy-orbit__core {
+      width: 30%;
+      padding: .55rem;
+    }
+
+    #Duftgalaxie-{{ section.id }} .duftgalaxy-orbit__note {
+      width: min(var(--note-size), 20vw);
+      min-width: 50px;
+    }
+
+    #Duftgalaxie-{{ section.id }} .duftgalaxy-info {
+      grid-area: info;
+      width: 100% !important;
+      max-width: none;
+      min-width: 0;
+      min-height: 189px;
+      height: 189px;
+      margin: 0 !important;
+      padding: 1.15rem 1.5rem;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+    }
+
+    #Duftgalaxie-{{ section.id }} .duftgalaxy-info__content {
+      display: flex;
+      width: 100%;
+      max-width: 100%;
+      height: 100%;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+    }
+
+    #Duftgalaxie-{{ section.id }} .duftgalaxy-info__title {
+      margin-right: auto;
+      margin-left: auto;
+      font-size: clamp(1.45rem, 6.2vw, 2rem);
+      line-height: 1.05;
+      text-align: center;
+    }
+
+    #Duftgalaxie-{{ section.id }} .duftgalaxy-info__description {
+      max-width: 34ch;
+      margin: .8rem auto 0;
+      font-size: clamp(.72rem, 2.8vw, .86rem);
+      line-height: 1.32;
+      text-align: center;
+    }
+
+    /* Mobil keine untere Aufgabe-/Intensitäts-Zeile. */
+    #Duftgalaxie-{{ section.id }} .duftgalaxy-info__badges {
+      display: none !important;
+    }
+
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    #Duftgalaxie-{{ section.id }} .duftgalaxy-selector__highlight,
+    #Duftgalaxie-{{ section.id }} .duftgalaxy-selector__logo,
+    #Duftgalaxie-{{ section.id }} .duftgalaxy-product__link span,
+    #Duftgalaxie-{{ section.id }} .duftgalaxy-product-visual__link,
+    #Duftgalaxie-{{ section.id }} .duftgalaxy-mobile-visual__item {
+      transition-duration: .01ms !important;
+    }
+  }
+{% endstyle %}
+
+<script>
+  (() => {
+    const section = document.getElementById('Duftgalaxie-{{ section.id }}');
+    if (!section || section.dataset.initialized === 'true') return;
+    section.dataset.initialized = 'true';
+
+    const selector = section.querySelector('[data-dg-selector]');
+    const highlight = section.querySelector('[data-dg-highlight]');
+    const selectorItems = Array.from(section.querySelectorAll('[data-dg-selector-item]'));
+    const mobileVisualItems = Array.from(section.querySelectorAll('[data-dg-mobile-visual-item]'));
+    const mobilePrevButton = section.querySelector('[data-dg-mobile-prev]');
+    const mobileNextButton = section.querySelector('[data-dg-mobile-next]');
+    const panels = Array.from(section.querySelectorAll('[data-dg-product-panel]'));
+    const productLink = section.querySelector('[data-dg-product-link]');
+
+    if (!selector || !highlight || panels.length === 0) return;
+
+    let activeIndex = Number(section.style.getPropertyValue('--dg-active-index')) || 0;
+    let activePanel = panels.find((panel) => Number(panel.dataset.index) === activeIndex) || panels[0];
+    activeIndex = Number(activePanel.dataset.index);
+
+    let isSwitching = false;
+    let hasEntered = false;
+    const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    const panelAnimations = new WeakMap();
+    const panelTimers = new WeakMap();
+    const preloadedImages = [];
+    const imageReadyPromises = new Map();
+    let backgroundsPreloadStarted = false;
+
+    const setPanelAnimations = (panel, animations) => {
+      panelAnimations.set(panel, animations);
+    };
+
+    const clearPanelAnimations = (panel) => {
+      const animations = panelAnimations.get(panel) || [];
+      animations.forEach((animation) => {
+        try {
+          animation.cancel();
+        } catch (error) {}
+      });
+      panelAnimations.set(panel, []);
+
+      const timer = panelTimers.get(panel);
+      if (timer) {
+        window.clearTimeout(timer);
+        panelTimers.delete(panel);
+      }
+    };
+
+    const getPanelParts = (panel) => {
+      const orbit = panel.querySelector('[data-dg-orbit]');
+      const notes = Array.from(panel.querySelectorAll('[data-dg-note]'));
+      const rings = Array.from(panel.querySelectorAll('.duftgalaxy-orbit__ring'));
+      const core = panel.querySelector('[data-dg-core]');
+      const coreLogo = core
+        ? core.querySelector('.duftgalaxy-orbit__core-logo, .duftgalaxy-orbit__core-fallback')
+        : null;
+      const productVisual = panel.querySelector('[data-dg-product-visual]');
+      const productVisualImage = productVisual
+        ? productVisual.querySelector('[data-dg-product-visual-mover]')
+        : null;
+      const info = panel.querySelector('[data-dg-info]');
+
+      return { orbit, notes, rings, core, coreLogo, productVisual, productVisualImage, info };
+    };
+
+    const syncInfoRightBleed = (panel = activePanel) => {
+      if (!panel) return;
+      const info = panel.querySelector('[data-dg-info]');
+      if (!info) return;
+
+      info.style.removeProperty('width');
+      info.style.removeProperty('max-width');
+      info.style.removeProperty('margin-right');
+      info.style.removeProperty('--dg-info-right-bleed');
+    };
+
+    const ensureImageReady = (url, priority = 'auto') => {
+      if (!url) return Promise.resolve();
+
+      if (imageReadyPromises.has(url)) {
+        return imageReadyPromises.get(url);
+      }
+
+      const promise = new Promise((resolve) => {
+        const image = new Image();
+        image.decoding = 'async';
+
+        if ('fetchPriority' in image) {
+          image.fetchPriority = priority;
+        }
+
+        let settled = false;
+
+        const finish = () => {
+          if (settled) return;
+          settled = true;
+
+          if (typeof image.decode === 'function') {
+            image.decode().catch(() => {}).finally(resolve);
+          } else {
+            resolve();
+          }
+        };
+
+        image.addEventListener('load', finish, { once: true });
+        image.addEventListener('error', finish, { once: true });
+        image.src = url;
+
+        /* Bereits aus dem Browsercache verfügbar. */
+        if (image.complete) {
+          finish();
+        }
+
+        preloadedImages.push(image);
+      });
+
+      imageReadyPromises.set(url, promise);
+      return promise;
+    };
+
+    const waitForPaint = () =>
+      new Promise((resolve) => {
+        window.requestAnimationFrame(() => {
+          window.requestAnimationFrame(resolve);
+        });
+      });
+
+    const selectNote = (panel, button) => {
+      if (!panel || !button) return;
+
+      const notes = Array.from(panel.querySelectorAll('[data-dg-note]'));
+      const title = panel.querySelector('[data-dg-info-title]');
+      const description = panel.querySelector('[data-dg-info-description]');
+      const badges = panel.querySelector('[data-dg-info-badges]');
+      const task = panel.querySelector('[data-dg-info-task]');
+      const intensity = panel.querySelector('[data-dg-info-intensity]');
+      const info = panel.querySelector('[data-dg-info]');
+
+      notes.forEach((note) => {
+        note.setAttribute('aria-pressed', String(note === button));
+      });
+
+      if (title) title.textContent = button.dataset.name || '';
+      if (description) {
+        description.textContent =
+          button.dataset.description ||
+          'Für diese Duftnote ist noch keine Beschreibung hinterlegt.';
+      }
+
+      if (task) task.textContent = button.dataset.task || '';
+      if (intensity) intensity.textContent = button.dataset.intensity || '';
+      if (badges) badges.hidden = false;
+
+      if (info) {
+        const background = button.dataset.background || '';
+
+        if (background) {
+          ensureImageReady(background, 'high');
+          info.style.setProperty('--dg-info-bg-image', `url(${JSON.stringify(background)})`);
+        } else {
+          info.style.removeProperty('--dg-info-bg-image');
+        }
+      }
+    };
+
+    const selectFirstNote = (panel) => {
+      const firstNote = panel.querySelector('[data-dg-note]');
+      if (firstNote) selectNote(panel, firstNote);
+    };
+
+    /*
+      Jeder Duft besitzt seinen eigenen Default-Cursor.
+      Beim ersten Aktivieren wird Duftstoff 1 gewählt, beim nächsten
+      Zurückkehren Duftstoff 2 usw. Nach dem letzten beginnt es wieder vorne.
+      DOM-Reihenfolge = Reihenfolge der Duftkomponenten im Produkt-Metafeld.
+    */
+    const defaultNoteCursors = new WeakMap();
+
+    const selectNextDefaultNote = (panel) => {
+      if (!panel) return;
+
+      const notes = Array.from(panel.querySelectorAll('[data-dg-note]'));
+      if (notes.length === 0) return;
+
+      const previousIndex = defaultNoteCursors.has(panel)
+        ? defaultNoteCursors.get(panel)
+        : -1;
+
+      const nextIndex = (previousIndex + 1) % notes.length;
+      defaultNoteCursors.set(panel, nextIndex);
+
+      selectNote(panel, notes[nextIndex]);
+    };
+
+    panels.forEach((panel) => {
+      const notes = Array.from(panel.querySelectorAll('[data-dg-note]'));
+
+      notes.forEach((button) => {
+        button.addEventListener('mouseenter', () => selectNote(panel, button));
+        button.addEventListener('focus', () => selectNote(panel, button));
+        button.addEventListener('click', () => selectNote(panel, button));
+      });
+
+      selectFirstNote(panel);
+    });
+
+
+    const preloadBackgrounds = () => {
+      if (backgroundsPreloadStarted) return;
+      backgroundsPreloadStarted = true;
+
+      const seen = new Set();
+
+      const collectPanelUrls = (panel, priority) => {
+        if (!panel) return;
+
+        const productVisual = panel.querySelector('[data-dg-product-visual]');
+        const productVisualUrl = productVisual?.dataset.imageUrl || '';
+
+        if (productVisualUrl && !seen.has(productVisualUrl)) {
+          seen.add(productVisualUrl);
+          ensureImageReady(productVisualUrl, priority);
+        }
+
+        panel.querySelectorAll('[data-dg-note]').forEach((note) => {
+          const url = note.dataset.background;
+          if (!url || seen.has(url)) return;
+
+          seen.add(url);
+          ensureImageReady(url, priority);
+        });
+      };
+
+      /* Der aktuell sichtbare Duft bekommt hohe Priorität; die beiden
+         übrigen Duftwelten werden direkt danach ebenfalls vollständig
+         vorgeladen und decodiert. */
+      collectPanelUrls(activePanel, 'high');
+
+      panels.forEach((panel) => {
+        if (panel !== activePanel) {
+          collectPanelUrls(panel, 'auto');
+        }
+      });
+
+      section._duftgalaxyPreloadedImages = preloadedImages;
+      section._duftgalaxyImageReadyPromises = imageReadyPromises;
+    };
+
+    /* Sofort beim Initialisieren starten – nicht erst beim Scrollen. */
+    preloadBackgrounds();
+
+    const createSpiralFrames = (button, centerX, centerY) => {
+      const rect = button.getBoundingClientRect();
+      const finalX = rect.left + rect.width / 2;
+      const finalY = rect.top + rect.height / 2;
+      const dx = finalX - centerX;
+      const dy = finalY - centerY;
+      const distance = Math.hypot(dx, dy);
+      const finalAngle = Math.atan2(dy, dx);
+      const turns = Math.PI * 1.35;
+      const frames = [];
+      const steps = 10;
+
+      for (let step = 0; step <= steps; step += 1) {
+        const progress = step / steps;
+        const radius = distance * progress;
+        const angle = finalAngle - turns * (1 - progress);
+        const currentX = centerX + radius * Math.cos(angle);
+        const currentY = centerY + radius * Math.sin(angle);
+        const offsetX = currentX - finalX;
+        const offsetY = currentY - finalY;
+        const scale = 0.16 + 0.84 * progress;
+        const rotation = -190 * (1 - progress);
+
+        frames.push({
+          transform: `translate(calc(-50% + ${offsetX}px), calc(-50% + ${offsetY}px)) rotate(${rotation}deg) scale(${scale})`,
+          opacity: progress < 0.08 ? 0 : 1,
+          offset: progress
+        });
+      }
+
+      return frames;
+    };
+
+    const revealWithoutMotion = (panel) => {
+      const { orbit, notes, rings, coreLogo, productVisualImage, info } = getPanelParts(panel);
+      if (!orbit) return;
+
+      orbit.classList.remove('duftgalaxy-orbit--animation-pending');
+      notes.forEach((note) => note.classList.add('is-arrived'));
+      rings.forEach((ring) => ring.classList.add('is-arrived'));
+      panel.classList.remove('is-pending');
+      panel.classList.remove('is-info-pending');
+
+      if (coreLogo) {
+        coreLogo.style.opacity = '';
+        coreLogo.style.transform = '';
+      }
+
+      if (productVisualImage) {
+        productVisualImage.style.opacity = '';
+        productVisualImage.style.transform = '';
+      }
+
+      if (info) {
+        info.style.opacity = '';
+        info.style.clipPath = '';
+        info.style.transform = '';
+      }
+
+      orbit.dataset.animationPlayed = 'true';
+    };
+
+    const resetPanel = (panel) => {
+      if (!panel) return;
+
+      clearPanelAnimations(panel);
+
+      const { orbit, notes, rings, coreLogo, productVisualImage, info } = getPanelParts(panel);
+      if (!orbit) return;
+
+      delete orbit.dataset.animationPlayed;
+      orbit.classList.add('duftgalaxy-orbit--animation-pending');
+      panel.classList.add('is-pending');
+      panel.classList.add('is-info-pending');
+
+      notes.forEach((note) => note.classList.remove('is-arrived'));
+      rings.forEach((ring) => ring.classList.remove('is-arrived'));
+
+      if (coreLogo) {
+        coreLogo.style.opacity = '';
+        coreLogo.style.transform = '';
+      }
+
+      if (productVisualImage) {
+        productVisualImage.style.opacity = '';
+        productVisualImage.style.transform = '';
+      }
+
+      if (info) {
+        info.style.opacity = '';
+        info.style.clipPath = '';
+        info.style.transform = '';
+      }
+    };
+
+    const runEntrance = (panel) => {
+      if (!panel) return;
+
+      const { orbit, notes, rings, core, coreLogo, productVisual, productVisualImage, info } = getPanelParts(panel);
+      if (!orbit || orbit.dataset.animationPlayed === 'true') return;
+
+      orbit.dataset.animationPlayed = 'true';
+
+      selectNextDefaultNote(panel);
+
+      if (reducedMotion || !Element.prototype.animate) {
+        revealWithoutMotion(panel);
+        return;
+      }
+
+      clearPanelAnimations(panel);
+
+      if (productVisualImage) {
+        const baseX = getComputedStyle(productVisual).getPropertyValue('--dg-visual-x').trim() || '0px';
+        const baseY = getComputedStyle(productVisual).getPropertyValue('--dg-visual-y').trim() || '0px';
+        productVisualImage.style.opacity = '0';
+        productVisualImage.style.transform = `translate(calc(${baseX} - 18%), ${baseY})`;
+      }
+
+      /*
+        Orbit/Core dürfen jetzt animieren. Die Infobox bleibt jedoch über
+        is-info-pending geschlossen, bis ihre eigene Aufklappanimation startet.
+      */
+      panel.classList.remove('is-pending');
+
+      const animations = [];
+      const orbitRect = orbit.getBoundingClientRect();
+      const centerX = orbitRect.left + orbitRect.width / 2;
+      const centerY = orbitRect.top + orbitRect.height / 2;
+      const coreRect = core
+        ? core.getBoundingClientRect()
+        : { width: orbitRect.width * 0.29 };
+
+      const easing = 'cubic-bezier(0.16, 1, 0.3, 1)';
+
+      if (productVisualImage && productVisual) {
+        const baseX = getComputedStyle(productVisual).getPropertyValue('--dg-visual-x').trim() || '0px';
+        const baseY = getComputedStyle(productVisual).getPropertyValue('--dg-visual-y').trim() || '0px';
+
+        const productVisualAnimation = productVisualImage.animate(
+          [
+            {
+              transform: `translate(calc(${baseX} - 18%), ${baseY})`,
+              opacity: 0
+            },
+            {
+              transform: `translate(${baseX}, ${baseY})`,
+              opacity: 1
+            }
+          ],
+          {
+            duration: 900,
+            delay: 120,
+            easing,
+            fill: 'forwards'
+          }
+        );
+
+        animations.push(productVisualAnimation);
+
+        productVisualAnimation.finished.then(() => {
+          productVisualImage.style.opacity = '1';
+          productVisualImage.style.transform = `translate(${baseX}, ${baseY})`;
+          productVisualAnimation.cancel();
+
+          window.requestAnimationFrame(() => {
+            productVisualImage.style.opacity = '';
+            productVisualImage.style.transform = '';
+          });
+        }).catch(() => {});
+      }
+
+      if (coreLogo) {
+        coreLogo.style.transform = 'scale(.12)';
+        coreLogo.style.opacity = '0';
+
+        const coreLogoAnimation = coreLogo.animate(
+          [
+            {
+              transform: 'scale(.12)',
+              opacity: 0
+            },
+            {
+              transform: 'scale(1)',
+              opacity: 1
+            }
+          ],
+          {
+            duration: 760,
+            delay: 170,
+            easing,
+            fill: 'forwards'
+          }
+        );
+
+        animations.push(coreLogoAnimation);
+
+        coreLogoAnimation.finished.then(() => {
+          coreLogo.style.opacity = '1';
+          coreLogo.style.transform = 'scale(1)';
+          coreLogoAnimation.cancel();
+
+          window.requestAnimationFrame(() => {
+            coreLogo.style.opacity = '';
+            coreLogo.style.transform = '';
+          });
+        }).catch(() => {});
+      }
+
+      rings.forEach((ring, index) => {
+        const ringRect = ring.getBoundingClientRect();
+        const startScale = Math.max(0.12, coreRect.width / ringRect.width);
+
+        const animation = ring.animate(
+          [
+            {
+              transform: `translate(-50%, -50%) scale(${startScale})`,
+              opacity: 0
+            },
+            {
+              transform: 'translate(-50%, -50%) scale(1)',
+              opacity: 1
+            }
+          ],
+          {
+            duration: 1860,
+            delay: index * 225,
+            easing,
+            fill: 'forwards'
+          }
+        );
+
+        animations.push(animation);
+
+        animation.finished.then(() => {
+          if (orbit.dataset.animationPlayed === 'true') {
+            ring.classList.add('is-arrived');
+          }
+          animation.cancel();
+        }).catch(() => {});
+      });
+
+      notes.forEach((button, index) => {
+        const animation = button.animate(
+          createSpiralFrames(button, centerX, centerY),
+          {
+            duration: 2040,
+            delay: 210 + index * 96,
+            easing,
+            fill: 'forwards'
+          }
+        );
+
+        animations.push(animation);
+
+        animation.finished.then(() => {
+          if (orbit.dataset.animationPlayed === 'true') {
+            button.classList.add('is-arrived');
+          }
+          animation.cancel();
+        }).catch(() => {});
+      });
+
+      if (info) {
+        const selectedNote =
+          panel.querySelector('[data-dg-note][aria-pressed="true"]') ||
+          panel.querySelector('[data-dg-note]');
+
+        const selectedBackground = selectedNote?.dataset.background || '';
+
+        /*
+          Die Box bleibt vollständig geschlossen, bis das aktuell benötigte
+          Bild geladen UND decodiert ist. Erst danach startet die eigentliche
+          Rechts-nach-links-Aufklappanimation.
+        */
+        const infoReady = ensureImageReady(selectedBackground, 'high');
+
+        Promise.all([
+          infoReady,
+          new Promise((resolve) => window.setTimeout(resolve, 500))
+        ]).then(async () => {
+          /*
+            Das Bild ist jetzt geladen und decodiert. Zwei Renderframes warten,
+            damit der Browser das CSS-Hintergrundbild garantiert gezeichnet hat,
+            bevor die Aufklappanimation sichtbar wird.
+          */
+          await waitForPaint();
+
+          /* Wurde während des Ladens bereits zu einem anderen Duft gewechselt,
+             darf diese alte Infobox nicht mehr aufklappen. */
+          if (panel !== activePanel || panel.hidden || orbit.dataset.animationPlayed !== 'true') {
+            return;
+          }
+
+          info.style.clipPath = 'inset(0 0 0 100%)';
+          info.style.transform = 'translateX(8%)';
+          info.style.opacity = '0';
+
+          panel.classList.remove('is-info-pending');
+
+          const infoAnimation = info.animate(
+            [
+              {
+                clipPath: 'inset(0 0 0 100%)',
+                transform: 'translateX(8%)',
+                opacity: 0
+              },
+              {
+                clipPath: 'inset(0 0 0 0)',
+                transform: 'translateX(0)',
+                opacity: 1
+              }
+            ],
+            {
+              duration: 1050,
+              easing,
+              fill: 'forwards'
+            }
+          );
+
+          const runningAnimations = panelAnimations.get(panel) || [];
+          runningAnimations.push(infoAnimation);
+          panelAnimations.set(panel, runningAnimations);
+
+          infoAnimation.finished.then(() => {
+            if (panel !== activePanel || panel.hidden) return;
+
+            info.style.opacity = '1';
+            info.style.clipPath = 'inset(0 0 0 0)';
+            info.style.transform = 'translateX(0)';
+            infoAnimation.cancel();
+
+            window.requestAnimationFrame(() => {
+              info.style.opacity = '';
+              info.style.clipPath = '';
+              info.style.transform = '';
+            });
+          }).catch(() => {});
+        });
+      }
+
+      setPanelAnimations(panel, animations);
+
+      const totalDuration = 2040 + 210 + Math.max(notes.length - 1, 0) * 96;
+      const timer = window.setTimeout(() => {
+        if (orbit.dataset.animationPlayed === 'true') {
+          orbit.classList.remove('duftgalaxy-orbit--animation-pending');
+        }
+        panelTimers.delete(panel);
+      }, totalDuration + 140);
+
+      panelTimers.set(panel, timer);
+    };
+
+    const animateOut = (panel) => {
+      if (!panel) return Promise.resolve();
+
+      const { orbit, notes, rings, core, coreLogo, productVisual, productVisualImage, info } = getPanelParts(panel);
+      if (!orbit || reducedMotion || !Element.prototype.animate) {
+        return Promise.resolve();
+      }
+
+      clearPanelAnimations(panel);
+
+      const animations = [];
+      const orbitRect = orbit.getBoundingClientRect();
+      const centerX = orbitRect.left + orbitRect.width / 2;
+      const centerY = orbitRect.top + orbitRect.height / 2;
+      const coreRect = core
+        ? core.getBoundingClientRect()
+        : { width: orbitRect.width * 0.29 };
+
+      const easing = 'cubic-bezier(0.7, 0, 0.84, 0)';
+
+      if (productVisualImage && productVisual) {
+        const baseX = getComputedStyle(productVisual).getPropertyValue('--dg-visual-x').trim() || '0px';
+        const baseY = getComputedStyle(productVisual).getPropertyValue('--dg-visual-y').trim() || '0px';
+
+        const productVisualAnimation = productVisualImage.animate(
+          [
+            {
+              transform: `translate(${baseX}, ${baseY})`,
+              opacity: 1
+            },
+            {
+              transform: `translate(calc(${baseX} - 18%), ${baseY})`,
+              opacity: 0
+            }
+          ],
+          {
+            duration: 620,
+            easing,
+            fill: 'forwards'
+          }
+        );
+
+        animations.push(productVisualAnimation);
+      }
+
+      if (coreLogo) {
+        const coreLogoAnimation = coreLogo.animate(
+          [
+            {
+              transform: 'scale(1)',
+              opacity: 1
+            },
+            {
+              transform: 'scale(.12)',
+              opacity: 0
+            }
+          ],
+          {
+            duration: 520,
+            easing,
+            fill: 'forwards'
+          }
+        );
+
+        animations.push(coreLogoAnimation);
+      }
+
+      notes.forEach((button, index) => {
+        const rect = button.getBoundingClientRect();
+        const finalX = rect.left + rect.width / 2;
+        const finalY = rect.top + rect.height / 2;
+        const offsetX = centerX - finalX;
+        const offsetY = centerY - finalY;
+
+        const animation = button.animate(
+          [
+            {
+              transform: 'translate(-50%, -50%) scale(1)',
+              opacity: 1
+            },
+            {
+              transform: `translate(calc(-50% + ${offsetX}px), calc(-50% + ${offsetY}px)) rotate(190deg) scale(.16)`,
+              opacity: 0
+            }
+          ],
+          {
+            duration: 690,
+            delay: index * 32,
+            easing,
+            fill: 'forwards'
+          }
+        );
+
+        animations.push(animation);
+      });
+
+      rings.forEach((ring, index) => {
+        const ringRect = ring.getBoundingClientRect();
+        const endScale = Math.max(0.12, coreRect.width / ringRect.width);
+
+        const animation = ring.animate(
+          [
+            {
+              transform: 'translate(-50%, -50%) scale(1)',
+              opacity: 1
+            },
+            {
+              transform: `translate(-50%, -50%) scale(${endScale})`,
+              opacity: 0
+            }
+          ],
+          {
+            duration: 620,
+            delay: index * 55,
+            easing,
+            fill: 'forwards'
+          }
+        );
+
+        animations.push(animation);
+      });
+
+      if (info) {
+        const infoAnimation = info.animate(
+          [
+            {
+              clipPath: 'inset(0 0 0 0)',
+              transform: 'translateX(0)',
+              opacity: 1
+            },
+            {
+              clipPath: 'inset(0 0 0 100%)',
+              transform: 'translateX(8%)',
+              opacity: 0
+            }
+          ],
+          {
+            duration: 620,
+            easing: 'cubic-bezier(0.7, 0, 0.84, 0)',
+            fill: 'forwards'
+          }
+        );
+
+        animations.push(infoAnimation);
+      }
+
+      setPanelAnimations(panel, animations);
+
+      return Promise.allSettled(
+        animations.map((animation) => animation.finished)
+      ).then(() => {});
+    };
+
+    const updateSelector = (index) => {
+      const item = selectorItems.find((button) => Number(button.dataset.index) === index);
+      if (!item || item.disabled) return;
+
+      section.style.setProperty('--dg-active-index', index);
+      section.style.setProperty('--dg-selector-highlight', item.dataset.highlight || '');
+
+      if (productLink && item.dataset.productUrl) {
+        productLink.href = item.dataset.productUrl;
+      }
+
+      selectorItems.forEach((button) => {
+        const isActive = Number(button.dataset.index) === index;
+        button.classList.toggle('is-active', isActive);
+        button.setAttribute('aria-selected', String(isActive));
+      });
+
+    };
+
+    let mobileVisualAnimations = [];
+
+    const cancelMobileVisualAnimations = () => {
+      mobileVisualAnimations.forEach((animation) => {
+        try {
+          animation.cancel();
+        } catch (error) {}
+      });
+      mobileVisualAnimations = [];
+    };
+
+    const setMobileVisualImmediate = (index) => {
+      cancelMobileVisualAnimations();
+
+      mobileVisualItems.forEach((item) => {
+        const isActive = Number(item.dataset.index) === index;
+        item.classList.toggle('is-active', isActive);
+        item.setAttribute('aria-hidden', String(!isActive));
+        item.style.removeProperty('opacity');
+        item.style.removeProperty('transform');
+        item.style.removeProperty('pointer-events');
+      });
+    };
+
+    const animateMobileVisual = (index, direction = null) => {
+      const nextItem = mobileVisualItems.find(
+        (item) => Number(item.dataset.index) === index
+      );
+
+      if (!nextItem) return;
+
+      const currentItem =
+        mobileVisualItems.find((item) => item.classList.contains('is-active')) ||
+        mobileVisualItems.find((item) => Number(item.dataset.index) === activeIndex);
+
+      if (
+        !window.matchMedia('(max-width: 749px)').matches ||
+        reducedMotion ||
+        !currentItem ||
+        currentItem === nextItem
+      ) {
+        setMobileVisualImmediate(index);
+        return;
+      }
+
+      cancelMobileVisualAnimations();
+
+      const resolvedDirection =
+        direction === 1 || direction === -1
+          ? direction
+          : index > activeIndex
+            ? 1
+            : -1;
+
+      const outgoingX = resolvedDirection > 0 ? '-115%' : '115%';
+      const incomingX = resolvedDirection > 0 ? '115%' : '-115%';
+
+      mobileVisualItems.forEach((item) => {
+        if (item !== currentItem && item !== nextItem) {
+          item.classList.remove('is-active');
+          item.setAttribute('aria-hidden', 'true');
+          item.style.removeProperty('opacity');
+          item.style.removeProperty('transform');
+          item.style.removeProperty('pointer-events');
+        }
+      });
+
+      currentItem.classList.add('is-active');
+      currentItem.setAttribute('aria-hidden', 'false');
+      currentItem.style.pointerEvents = 'none';
+
+      nextItem.classList.add('is-active');
+      nextItem.setAttribute('aria-hidden', 'false');
+      nextItem.style.opacity = '0';
+      nextItem.style.transform = `translate3d(${incomingX}, 0, 0)`;
+      nextItem.style.pointerEvents = 'none';
+
+      const outgoingAnimation = currentItem.animate(
+        [
+          {
+            transform: 'translate3d(0, 0, 0)',
+            opacity: 1
+          },
+          {
+            transform: `translate3d(${outgoingX}, 0, 0)`,
+            opacity: 0
+          }
+        ],
+        {
+          duration: 620,
+          easing: 'cubic-bezier(.22, .72, .18, 1)',
+          fill: 'forwards'
+        }
+      );
+
+      const incomingAnimation = nextItem.animate(
+        [
+          {
+            transform: `translate3d(${incomingX}, 0, 0)`,
+            opacity: 0
+          },
+          {
+            transform: 'translate3d(0, 0, 0)',
+            opacity: 1
+          }
+        ],
+        {
+          duration: 620,
+          easing: 'cubic-bezier(.22, .72, .18, 1)',
+          fill: 'forwards'
+        }
+      );
+
+      mobileVisualAnimations = [outgoingAnimation, incomingAnimation];
+
+      Promise.allSettled([
+        outgoingAnimation.finished,
+        incomingAnimation.finished
+      ]).then(() => {
+        if (!nextItem.classList.contains('is-active')) return;
+
+        currentItem.classList.remove('is-active');
+        currentItem.setAttribute('aria-hidden', 'true');
+        currentItem.style.removeProperty('opacity');
+        currentItem.style.removeProperty('transform');
+        currentItem.style.removeProperty('pointer-events');
+
+        nextItem.classList.add('is-active');
+        nextItem.setAttribute('aria-hidden', 'false');
+        nextItem.style.removeProperty('opacity');
+        nextItem.style.removeProperty('transform');
+        nextItem.style.removeProperty('pointer-events');
+
+        mobileVisualAnimations = [];
+      });
+    };
+
+    const activatePanel = async (index, animateTransition = true, visualDirection = null) => {
+      const nextPanel = panels.find((panel) => Number(panel.dataset.index) === index);
+      if (!nextPanel || nextPanel === activePanel || isSwitching) return;
+
+      isSwitching = true;
+
+      animateMobileVisual(index, visualDirection);
+      updateSelector(index);
+
+      if (animateTransition && hasEntered) {
+        await animateOut(activePanel);
+      }
+
+      resetPanel(activePanel);
+      activePanel.hidden = true;
+      activePanel.classList.remove('is-active');
+
+      /* Nächsten Duft zuerst vollständig in den geschlossenen Startzustand
+         setzen und erst danach sichtbar schalten. So kann weder Mittellogo
+         noch Infobox für einen Frame aufblitzen. */
+      resetPanel(nextPanel);
+      nextPanel.classList.add('is-active');
+      nextPanel.hidden = false;
+
+      activePanel = nextPanel;
+      activeIndex = index;
+
+      window.requestAnimationFrame(() => {
+        window.requestAnimationFrame(() => {
+          syncInfoRightBleed(nextPanel);
+
+          if (hasEntered) {
+            runEntrance(nextPanel);
+          }
+          isSwitching = false;
+        });
+      });
+    };
+
+    selectorItems.forEach((button) => {
+      button.addEventListener('click', () => {
+        if (button.disabled) return;
+
+        const targetIndex = Number(button.dataset.index);
+        if (targetIndex === activeIndex) return;
+
+        const visualDirection = targetIndex > activeIndex ? 1 : -1;
+        activatePanel(targetIndex, true, visualDirection);
+      });
+    });
+
+    /*
+      Mobile Swipe:
+      - Wisch nach links  -> nächster Duft
+      - Wisch nach rechts -> vorheriger Duft
+      - funktioniert im gesamten Duftgalaxie-Bereich
+      - vertikale Gesten bleiben normales Seitenscrollen
+    */
+    let swipeStartX = 0;
+    let swipeStartY = 0;
+    let swipeStartTime = 0;
+
+    const getAvailableIndexes = () =>
+      selectorItems
+        .filter((button) => !button.disabled)
+        .map((button) => Number(button.dataset.index))
+        .sort((a, b) => a - b);
+
+    const activateRelativeProduct = (direction) => {
+      if (isSwitching) return;
+
+      const available = getAvailableIndexes();
+      if (available.length < 2) return;
+
+      const currentPosition = available.indexOf(activeIndex);
+      if (currentPosition === -1) return;
+
+      const targetPosition =
+        direction > 0
+          ? (currentPosition + 1) % available.length
+          : (currentPosition - 1 + available.length) % available.length;
+
+      activatePanel(available[targetPosition], true, direction > 0 ? 1 : -1);
+    };
+
+    if (mobilePrevButton) {
+      mobilePrevButton.addEventListener('click', (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        activateRelativeProduct(-1);
+      });
+    }
+
+    if (mobileNextButton) {
+      mobileNextButton.addEventListener('click', (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        activateRelativeProduct(1);
+      });
+    }
+
+    section.addEventListener('touchstart', (event) => {
+      if (!window.matchMedia('(max-width: 749px)').matches) return;
+      if (!event.touches || event.touches.length !== 1) return;
+
+      const touch = event.touches[0];
+      swipeStartX = touch.clientX;
+      swipeStartY = touch.clientY;
+      swipeStartTime = Date.now();
+    }, { passive: true });
+
+    section.addEventListener('touchend', (event) => {
+      if (!window.matchMedia('(max-width: 749px)').matches) return;
+      if (!event.changedTouches || event.changedTouches.length !== 1) return;
+      if (isSwitching) return;
+
+      const touch = event.changedTouches[0];
+      const deltaX = touch.clientX - swipeStartX;
+      const deltaY = touch.clientY - swipeStartY;
+      const elapsed = Date.now() - swipeStartTime;
+
+      /* Nur klare horizontale Wischgesten werten. */
+      if (elapsed > 900) return;
+      if (Math.abs(deltaX) < 52) return;
+      if (Math.abs(deltaX) < Math.abs(deltaY) * 1.25) return;
+
+      const available = getAvailableIndexes();
+      if (available.length < 2) return;
+
+      const currentPosition = available.indexOf(activeIndex);
+      if (currentPosition === -1) return;
+
+      let targetPosition;
+
+      let visualDirection;
+
+      if (deltaX < 0) {
+        /* nach links wischen -> alt nach links, neu von rechts */
+        targetPosition = (currentPosition + 1) % available.length;
+        visualDirection = 1;
+      } else {
+        /* nach rechts wischen -> alt nach rechts, neu von links */
+        targetPosition = (currentPosition - 1 + available.length) % available.length;
+        visualDirection = -1;
+      }
+
+      activatePanel(available[targetPosition], true, visualDirection);
+    }, { passive: true });
+
+    updateSelector(activeIndex);
+    setMobileVisualImmediate(activeIndex);
+    selectFirstNote(activePanel);
+    syncInfoRightBleed(activePanel);
+
+    window.addEventListener('resize', () => {
+      syncInfoRightBleed(activePanel);
+    }, { passive: true });
+
+    if ('ResizeObserver' in window) {
+      const galaxyResizeObserver = new ResizeObserver(() => {
+        syncInfoRightBleed(activePanel);
+      });
+      galaxyResizeObserver.observe(section);
+    }
+
+    if ('IntersectionObserver' in window) {
+      const entranceObserver = new IntersectionObserver((entries) => {
+        const entry = entries[0];
+        if (!entry) return;
+
+        if (entry.isIntersecting && entry.intersectionRatio >= 0.12) {
+          if (!hasEntered) {
+            hasEntered = true;
+            runEntrance(activePanel);
+          }
+        }
+      }, {
+        threshold: [0, 0.12],
+        rootMargin: '0px 0px -5% 0px'
+      });
+
+      entranceObserver.observe(section);
+
+      const resetObserver = new IntersectionObserver((entries) => {
+        const entry = entries[0];
+        if (!entry) return;
+
+        if (!entry.isIntersecting && hasEntered) {
+          hasEntered = false;
+          resetPanel(activePanel);
+        }
+      }, {
+        threshold: 0
+      });
+
+      resetObserver.observe(section);
+    } else {
+      hasEntered = true;
+      runEntrance(activePanel);
+    }
+  })();
+</script>
+
+{% schema %}
+{
+  "name": "Duftgalaxie",
+  "tag": "section",
+  "class": "section",
+  "settings": [
+    {
+      "type": "header",
+      "content": "Inhalt"
+    },
+    {
+      "type": "text",
+      "id": "eyebrow",
+      "label": "Überüberschrift",
+      "default": "Tom Schiller"
+    },
+    {
+      "type": "text",
+      "id": "heading",
+      "label": "Überschrift",
+      "default": "Duftgalaxie"
+    },
+    {
+      "type": "richtext",
+      "id": "intro",
+      "label": "Unterschrift",
+      "default": "<p>Tauche ein in eine Galaxie voller Düfte.</p>"
+    },
+
+    {
+      "type": "header",
+      "content": "Parfüms"
+    },
+    {
+      "type": "product",
+      "id": "product_1",
+      "label": "Parfüm 1"
+    },
+    {
+      "type": "color",
+      "id": "highlight_color_1",
+      "label": "Highlight-Farbe Parfüm 1",
+      "default": "#681313"
+    },
+    {
+      "type": "header",
+      "content": "Parfüm 1 – Orbit-Zentrum"
+    },
+    {
+      "type": "range",
+      "id": "center_logo_size_1",
+      "label": "Logo-Größe",
+      "min": 20,
+      "max": 200,
+      "step": 5,
+      "unit": "%",
+      "default": 65
+    },
+    {
+      "type": "range",
+      "id": "center_logo_x_1",
+      "label": "Logo horizontal",
+      "min": -80,
+      "max": 80,
+      "step": 2,
+      "unit": "px",
+      "default": 0
+    },
+    {
+      "type": "range",
+      "id": "center_logo_y_1",
+      "label": "Logo vertikal",
+      "min": -80,
+      "max": 80,
+      "step": 2,
+      "unit": "px",
+      "default": 0
+    },
+    {
+      "type": "range",
+      "id": "selector_logo_size_1",
+      "label": "Logo 1: Größe",
+      "min": 50,
+      "max": 160,
+      "step": 5,
+      "unit": "%",
+      "default": 100
+    },
+    {
+      "type": "range",
+      "id": "selector_logo_x_1",
+      "label": "Logo 1: Horizontal",
+      "min": -60,
+      "max": 60,
+      "step": 2,
+      "unit": "px",
+      "default": 0
+    },
+    {
+      "type": "range",
+      "id": "selector_logo_y_1",
+      "label": "Logo 1: Vertikal",
+      "min": -40,
+      "max": 40,
+      "step": 2,
+      "unit": "px",
+      "default": 0
+    },
+    {
+      "type": "range",
+      "id": "product_visual_size_1",
+      "label": "Produktbild 1: Größe",
+      "min": 20,
+      "max": 160,
+      "step": 5,
+      "unit": "%",
+      "default": 80
+    },
+    {
+      "type": "range",
+      "id": "product_visual_x_1",
+      "label": "Produktbild 1: Horizontal",
+      "min": -200,
+      "max": 200,
+      "step": 5,
+      "unit": "px",
+      "default": 0
+    },
+    {
+      "type": "range",
+      "id": "product_visual_y_1",
+      "label": "Produktbild 1: Vertikal",
+      "min": -200,
+      "max": 200,
+      "step": 5,
+      "unit": "px",
+      "default": 0
+    },
+    {
+      "type": "product",
+      "id": "product_2",
+      "label": "Parfüm 2"
+    },
+    {
+      "type": "color",
+      "id": "highlight_color_2",
+      "label": "Highlight-Farbe Parfüm 2",
+      "default": "#D8CFB6"
+    },
+    {
+      "type": "header",
+      "content": "Parfüm 2 – Orbit-Zentrum"
+    },
+    {
+      "type": "range",
+      "id": "center_logo_size_2",
+      "label": "Logo-Größe",
+      "min": 20,
+      "max": 200,
+      "step": 5,
+      "unit": "%",
+      "default": 65
+    },
+    {
+      "type": "range",
+      "id": "center_logo_x_2",
+      "label": "Logo horizontal",
+      "min": -80,
+      "max": 80,
+      "step": 2,
+      "unit": "px",
+      "default": 0
+    },
+    {
+      "type": "range",
+      "id": "center_logo_y_2",
+      "label": "Logo vertikal",
+      "min": -80,
+      "max": 80,
+      "step": 2,
+      "unit": "px",
+      "default": 0
+    },
+    {
+      "type": "range",
+      "id": "selector_logo_size_2",
+      "label": "Logo 2: Größe",
+      "min": 50,
+      "max": 160,
+      "step": 5,
+      "unit": "%",
+      "default": 100
+    },
+    {
+      "type": "range",
+      "id": "selector_logo_x_2",
+      "label": "Logo 2: Horizontal",
+      "min": -60,
+      "max": 60,
+      "step": 2,
+      "unit": "px",
+      "default": 0
+    },
+    {
+      "type": "range",
+      "id": "selector_logo_y_2",
+      "label": "Logo 2: Vertikal",
+      "min": -40,
+      "max": 40,
+      "step": 2,
+      "unit": "px",
+      "default": 0
+    },
+    {
+      "type": "range",
+      "id": "product_visual_size_2",
+      "label": "Produktbild 2: Größe",
+      "min": 20,
+      "max": 160,
+      "step": 5,
+      "unit": "%",
+      "default": 80
+    },
+    {
+      "type": "range",
+      "id": "product_visual_x_2",
+      "label": "Produktbild 2: Horizontal",
+      "min": -200,
+      "max": 200,
+      "step": 5,
+      "unit": "px",
+      "default": 0
+    },
+    {
+      "type": "range",
+      "id": "product_visual_y_2",
+      "label": "Produktbild 2: Vertikal",
+      "min": -200,
+      "max": 200,
+      "step": 5,
+      "unit": "px",
+      "default": 0
+    },
+    {
+      "type": "product",
+      "id": "product_3",
+      "label": "Parfüm 3"
+    },
+    {
+      "type": "color",
+      "id": "highlight_color_3",
+      "label": "Highlight-Farbe Parfüm 3",
+      "default": "#55504A"
+    },
+    {
+      "type": "header",
+      "content": "Parfüm 3 – Orbit-Zentrum"
+    },
+    {
+      "type": "range",
+      "id": "center_logo_size_3",
+      "label": "Logo-Größe",
+      "min": 20,
+      "max": 200,
+      "step": 5,
+      "unit": "%",
+      "default": 65
+    },
+    {
+      "type": "range",
+      "id": "center_logo_x_3",
+      "label": "Logo horizontal",
+      "min": -80,
+      "max": 80,
+      "step": 2,
+      "unit": "px",
+      "default": 0
+    },
+    {
+      "type": "range",
+      "id": "center_logo_y_3",
+      "label": "Logo vertikal",
+      "min": -80,
+      "max": 80,
+      "step": 2,
+      "unit": "px",
+      "default": 0
+    },
+    {
+      "type": "range",
+      "id": "selector_logo_size_3",
+      "label": "Logo 3: Größe",
+      "min": 50,
+      "max": 160,
+      "step": 5,
+      "unit": "%",
+      "default": 100
+    },
+    {
+      "type": "range",
+      "id": "selector_logo_x_3",
+      "label": "Logo 3: Horizontal",
+      "min": -60,
+      "max": 60,
+      "step": 2,
+      "unit": "px",
+      "default": 0
+    },
+    {
+      "type": "range",
+      "id": "selector_logo_y_3",
+      "label": "Logo 3: Vertikal",
+      "min": -40,
+      "max": 40,
+      "step": 2,
+      "unit": "px",
+      "default": 0
+    },
+    {
+      "type": "range",
+      "id": "product_visual_size_3",
+      "label": "Produktbild 3: Größe",
+      "min": 20,
+      "max": 160,
+      "step": 5,
+      "unit": "%",
+      "default": 80
+    },
+    {
+      "type": "range",
+      "id": "product_visual_x_3",
+      "label": "Produktbild 3: Horizontal",
+      "min": -200,
+      "max": 200,
+      "step": 5,
+      "unit": "px",
+      "default": 0
+    },
+    {
+      "type": "range",
+      "id": "product_visual_y_3",
+      "label": "Produktbild 3: Vertikal",
+      "min": -200,
+      "max": 200,
+      "step": 5,
+      "unit": "px",
+      "default": 0
+    },
+
+    {
+      "type": "header",
+      "content": "Selector"
+    },
+    {
+      "type": "color",
+      "id": "selector_background",
+      "label": "Hintergrund des Balkens",
+      "default": "#F0EFEA"
+    },
+    {
+      "type": "range",
+      "id": "selector_max_width",
+      "label": "Maximale Breite",
+      "min": 520,
+      "max": 1100,
+      "step": 20,
+      "unit": "px",
+      "default": 900
+    },
+    {
+      "type": "range",
+      "id": "selector_height",
+      "label": "Höhe Desktop",
+      "min": 72,
+      "max": 150,
+      "step": 2,
+      "unit": "px",
+      "default": 104
+    },
+    {
+      "type": "range",
+      "id": "selector_inset",
+      "label": "Innenabstand Desktop",
+      "min": 2,
+      "max": 14,
+      "step": 1,
+      "unit": "px",
+      "default": 5
+    },
+    {
+      "type": "range",
+      "id": "selector_radius",
+      "label": "Außenradius Desktop",
+      "min": 0,
+      "max": 36,
+      "step": 1,
+      "unit": "px",
+      "default": 15
+    },
+    {
+      "type": "range",
+      "id": "selector_inner_radius",
+      "label": "Highlight-Radius Desktop",
+      "min": 0,
+      "max": 32,
+      "step": 1,
+      "unit": "px",
+      "default": 12
+    },
+    {
+      "type": "range",
+      "id": "selector_height_mobile",
+      "label": "Höhe Mobil",
+      "min": 62,
+      "max": 110,
+      "step": 2,
+      "unit": "px",
+      "default": 78
+    },
+    {
+      "type": "range",
+      "id": "selector_inset_mobile",
+      "label": "Innenabstand Mobil",
+      "min": 2,
+      "max": 10,
+      "step": 1,
+      "unit": "px",
+      "default": 4
+    },
+    {
+      "type": "range",
+      "id": "selector_radius_mobile",
+      "label": "Außenradius Mobil",
+      "min": 0,
+      "max": 28,
+      "step": 1,
+      "unit": "px",
+      "default": 13
+    },
+    {
+      "type": "range",
+      "id": "selector_inner_radius_mobile",
+      "label": "Highlight-Radius Mobil",
+      "min": 0,
+      "max": 24,
+      "step": 1,
+      "unit": "px",
+      "default": 10
+    },
+
+    {
+      "type": "header",
+      "content": "Farben"
+    },
+    {
+      "type": "color",
+      "id": "header_background_color",
+      "label": "Hintergrund Kopfbereich",
+      "default": "#000000"
+    },
+    {
+      "type": "color",
+      "id": "background_color",
+      "label": "Hintergrund Duftgalaxie",
+      "default": "#000000"
+    },
+    {
+      "type": "color",
+      "id": "text_color",
+      "label": "Textfarbe",
+      "default": "#FFFFFF"
+    },
+    {
+      "type": "color",
+      "id": "muted_color",
+      "label": "Sekundäre Textfarbe",
+      "default": "#BEBEBE"
+    },
+    {
+      "type": "color",
+      "id": "accent_color",
+      "label": "Akzentfarbe",
+      "default": "#D8C8A2"
+    },
+    {
+      "type": "color",
+      "id": "line_color",
+      "label": "Farbe der Orbitringe",
+      "default": "#5F5F5F"
+    },
+    {
+      "type": "color",
+      "id": "center_color",
+      "label": "Farbe des mittleren Kreises",
+      "default": "#F3F0E7"
+    },
+    {
+      "type": "color",
+      "id": "info_text_color",
+      "label": "Textfarbe Infobox",
+      "default": "#FFFFFF"
+    },
+    {
+      "type": "range",
+      "id": "info_overlay_opacity",
+      "label": "Abdunklung Infobox-Bild",
+      "min": 0,
+      "max": 90,
+      "step": 5,
+      "unit": "%",
+      "default": 45
+    },
+
+    {
+      "type": "header",
+      "content": "Layout"
+    },
+    {
+      "type": "range",
+      "id": "max_width",
+      "label": "Maximale Inhaltsbreite",
+      "min": 1000,
+      "max": 1800,
+      "step": 50,
+      "unit": "px",
+      "default": 1500
+    },
+    {
+      "type": "range",
+      "id": "padding_top",
+      "label": "Abstand oben",
+      "min": 20,
+      "max": 180,
+      "step": 10,
+      "unit": "px",
+      "default": 90
+    },
+    {
+      "type": "range",
+      "id": "padding_bottom",
+      "label": "Abstand unten",
+      "min": 20,
+      "max": 180,
+      "step": 10,
+      "unit": "px",
+      "default": 90
+    },
+    {
+      "type": "checkbox",
+      "id": "show_product_link",
+      "label": "Produktlink unter dem Orbit anzeigen",
+      "default": true
+    },
+    {
+      "type": "text",
+      "id": "product_link_text",
+      "label": "Text des Produktlinks",
+      "default": "Duft entdecken"
+    },
+
+    {
+      "type": "header",
+      "content": "Datenverknüpfung"
+    },
+    {
+      "type": "text",
+      "id": "metafield_namespace",
+      "label": "Namespace",
+      "default": "custom"
+    },
+    {
+      "type": "text",
+      "id": "product_metafield_key",
+      "label": "Produkt-Metafeld Duftkomponenten",
+      "default": "duftkomponente"
+    },
+    {
+      "type": "text",
+      "id": "logo_dark_key",
+      "label": "Normales Logo",
+      "default": "parfumname_schwarz"
+    },
+    {
+      "type": "text",
+      "id": "logo_active_key",
+      "label": "Komplementäres Logo",
+      "default": "parfumname"
+    },
+    {
+      "type": "text",
+      "id": "product_visual_key",
+      "label": "Produktdarstellung",
+      "default": "produktdarstellung_schwarz"
+    },
+    {
+      "type": "text",
+      "id": "component_note_key",
+      "label": "Duftkomponente: Duftnote",
+      "default": "duftnote"
+    },
+    {
+      "type": "text",
+      "id": "component_intensity_key",
+      "label": "Duftkomponente: Intensität",
+      "default": "intensitat"
+    },
+    {
+      "type": "text",
+      "id": "component_task_key",
+      "label": "Duftkomponente: Aufgabe",
+      "default": "aufgabe"
+    },
+    {
+      "type": "text",
+      "id": "note_name_key",
+      "label": "Duftnote: Name",
+      "default": "name"
+    },
+    {
+      "type": "text",
+      "id": "note_description_key",
+      "label": "Duftnote: Beschreibung",
+      "default": "beschreibung"
+    },
+    {
+      "type": "text",
+      "id": "note_image_key",
+      "label": "Duftnote: Bild",
+      "default": "duftabbildung"
+    },
+    {
+      "type": "text",
+      "id": "note_color_key",
+      "label": "Duftnote: Darstellungsfarbe",
+      "default": "darstellungsfarbe"
+    }
+  ],
+  "presets": [
+    {
+      "name": "Duftgalaxie"
+    }
+  ]
+}
+{% endschema %}

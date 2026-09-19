@@ -1,0 +1,1548 @@
+{% comment %}
+  Duftorbit für Shopify Online Store 2.0
+
+  Datenmodell:
+  Produkt-Metafeld (Liste) -> Duftkomponente -> Duftnote
+
+  Standardmäßig erwartete Schlüssel:
+  Produkt-Metafeld: custom.duftkomponente
+
+  Duftkomponente:
+  - duftnote (Metaobjekt-Referenz)
+  - intensitat
+  - aufgabe
+
+  Duftnote:
+  - name
+  - beschreibung
+  - duftabbildung (Datei-/Bildreferenz)
+  - darstellungsfarbe (Farbe des Duftnotenkreises)
+
+  Produkt:
+  - custom.parfumname_schwarz (Datei-/Bildreferenz für das Logo im Zentrum)
+
+  Alle Schlüssel können im Theme-Editor in den Section-Einstellungen angepasst werden.
+
+  Diese Version enthält:
+  - dreifach verlangsamte Einflugsanimation
+  - einstellbare Farbe des mittleren Kreises
+  - automatisches Produktlogo aus einem Produkt-Metafeld
+  - automatisches Hintergrundbild je Duftnote aus dem Metaobjekt
+  - frühzeitiges Vorladen aller Duftabbildungen für verzögerungsfreien Wechsel
+  - Duftnotenkreise werden mit Duftnote.duftabbildung als Bild gefüllt
+  - Duftabbildung füllt den jeweiligen Duftnotenkreis
+  - Duftnotennamen erscheinen ausschließlich in der Infobox
+  - Infobox ist auf Desktop so hoch wie der Orbit, randlos, linksbündig und exakt bis zum rechten Rand des Abschnittshintergrunds erweitert
+  - alle Orbitringe sind durchgezogen und doppelt so stark
+  - kein unterer Abschnittsabstand, damit der Hintergrund bündig am Bild endet
+  - Duftnote.darstellungsfarbe steuert Rahmen und Fallbackfarbe der Duftnotenkreise
+  - eigenständiger Kopfbereich mit separat einstellbarer Hintergrundfarbe
+  - keine manuellen Kreisfarben 1–8 und kein Fallback-Hintergrundbild der Infobox
+  - separat einstellbare Textfarbe der Infobox
+  - mobile Vollbreite für den gesamten Abschnitt ohne seitlichen weißen Rand
+  - mobil verkleinerter Orbit und halbierte Infoboxhöhe
+  - mobil werden die Kennzeichnungs-Badges ausgeblendet; Titel und Beschreibung bleiben linksbündig und vertikal zentriert
+{% endcomment %}
+
+{% liquid
+  assign dp_namespace = section.settings.metafield_namespace | strip
+  assign dp_product_key = section.settings.product_metafield_key | strip
+  assign dp_components_metafield = product.metafields[dp_namespace][dp_product_key]
+  assign dp_components = dp_components_metafield.value
+
+  assign dp_component_note_key = section.settings.component_note_key | strip
+  assign dp_component_intensity_key = section.settings.component_intensity_key | strip
+  assign dp_component_task_key = section.settings.component_task_key | strip
+  assign dp_note_name_key = section.settings.note_name_key | strip
+  assign dp_note_description_key = section.settings.note_description_key | strip
+  assign dp_note_image_key = section.settings.note_image_key | strip
+  assign dp_note_color_key = section.settings.note_color_key | strip
+
+  assign dp_product_logo_namespace = section.settings.product_logo_namespace | default: 'custom' | strip
+  assign dp_product_logo_key = section.settings.product_logo_key | strip
+  if dp_product_logo_key == blank or dp_product_logo_key == 'parfumname'
+    assign dp_product_logo_key = 'parfumname_schwarz'
+  endif
+  assign dp_product_logo_metafield = product.metafields[dp_product_logo_namespace][dp_product_logo_key]
+  assign dp_product_logo = dp_product_logo_metafield.value
+  assign dp_product_logo_image = dp_product_logo.preview_image | default: dp_product_logo
+
+  assign dp_center_logo_size = product.metafields.custom.duftorbit_logo_groesse.value
+  assign dp_center_logo_x = product.metafields.custom.duftorbit_logo_horizontal.value
+  assign dp_center_logo_y = product.metafields.custom.duftorbit_logo_vertikal.value
+
+  if dp_center_logo_size == blank
+    assign dp_center_logo_size = 65
+  endif
+
+  if dp_center_logo_x == blank
+    assign dp_center_logo_x = 0
+  endif
+
+  if dp_center_logo_y == blank
+    assign dp_center_logo_y = 0
+  endif
+
+  assign dp_center_logo_render_width = dp_center_logo_size | times: 2
+%}
+
+{% if product != blank and dp_components != blank %}
+  <section
+    id="Duftorbit-{{ section.id }}"
+    class="duftorbit-section"
+    style="
+      --do-accent: {{ section.settings.accent_color }};
+      --do-background: {{ section.settings.background_color }};
+      --do-header-background: {{ section.settings.header_background_color }};
+      --do-text: {{ section.settings.text_color }};
+      --do-muted: {{ section.settings.muted_color }};
+      --do-line: {{ section.settings.line_color }};
+      --do-center: {{ section.settings.center_color }};
+      --do-info-text: {{ section.settings.info_text_color }};
+      --do-max-width: {{ section.settings.max_width }}px;
+    "
+  >
+    {% if section.settings.eyebrow != blank or section.settings.heading != blank or section.settings.intro != blank %}
+      <div class="duftorbit-section__header-area">
+        <div class="duftorbit-section__header-inner page-width">
+          <header class="duftorbit-section__header">
+            {% if section.settings.eyebrow != blank %}
+              <p class="duftorbit-section__eyebrow">{{ section.settings.eyebrow | escape }}</p>
+            {% endif %}
+
+            {% if section.settings.heading != blank %}
+              <h2 class="duftorbit-section__heading">{{ section.settings.heading | escape }}</h2>
+            {% endif %}
+
+            {% if section.settings.intro != blank %}
+              <div class="duftorbit-section__intro rte">{{ section.settings.intro }}</div>
+            {% endif %}
+          </header>
+        </div>
+      </div>
+    {% endif %}
+
+    <div class="duftorbit-section__body page-width">
+      <div class="duftorbit-layout" data-duftorbit-root>
+        <div class="duftorbit duftorbit--animation-pending" aria-label="Duftorbit für {{ product.title | escape }}">
+          <span class="duftorbit__ring duftorbit__ring--outer" aria-hidden="true"></span>
+          <span class="duftorbit__ring duftorbit__ring--middle" aria-hidden="true"></span>
+          <span class="duftorbit__ring duftorbit__ring--inner" aria-hidden="true"></span>
+
+          <div
+            class="duftorbit__core"
+            aria-label="Zentrum des Duftorbits"
+            style="
+              --do-core-logo-width: {{ dp_center_logo_render_width }}%;
+              --do-core-logo-x: {{ dp_center_logo_x }}px;
+              --do-core-logo-y: {{ dp_center_logo_y }}px;
+            "
+          >
+            {% if dp_product_logo_image != blank %}
+              {{
+                dp_product_logo_image
+                | image_url: width: 900
+                | image_tag:
+                  class: 'duftorbit__core-logo',
+                  widths: '180, 240, 360, 480, 600, 900',
+                  sizes: '(max-width: 749px) 24vw, 170px',
+                  loading: 'lazy',
+                  alt: product.title
+              }}
+            {% elsif section.settings.center_logo != blank %}
+              {{
+                section.settings.center_logo
+                | image_url: width: 900
+                | image_tag:
+                  class: 'duftorbit__core-logo',
+                  widths: '180, 240, 360, 480, 600, 900',
+                  sizes: '(max-width: 749px) 24vw, 170px',
+                  loading: 'lazy',
+                  alt: product.title
+              }}
+            {% endif %}
+          </div>
+
+          {% for component in dp_components limit: 8 %}
+            {% liquid
+              assign note_reference_field = component[dp_component_note_key]
+              assign note = note_reference_field.value
+
+              assign note_name_field = note[dp_note_name_key]
+              assign note_name = note_name_field.value
+
+              assign note_description_field = note[dp_note_description_key]
+              assign note_description = note_description_field.value
+
+              assign note_image_field = note[dp_note_image_key]
+              assign note_image = note_image_field.value
+              assign note_image_source = note_image.preview_image | default: note_image
+              assign note_image_url = ''
+
+              assign note_color_field = note[dp_note_color_key]
+              assign note_display_color = note_color_field.value
+
+              if note_image_source != blank
+                assign note_image_url = note_image_source | image_url: width: 1400
+              endif
+
+              assign intensity_field = component[dp_component_intensity_key]
+              assign intensity = intensity_field.value | downcase | strip
+
+              assign task_field = component[dp_component_task_key]
+              assign task = task_field.value | downcase | strip
+
+              assign bubble_size = 82
+              assign intensity_label = intensity | capitalize
+
+              case intensity
+                when 'dominant'
+                  assign bubble_size = 112
+                  assign intensity_label = 'Dominant'
+                when 'prägend'
+                  assign bubble_size = 98
+                  assign intensity_label = 'Prägend'
+                when 'praegend'
+                  assign bubble_size = 98
+                  assign intensity_label = 'Prägend'
+                when 'wahrnehmbar'
+                  assign bubble_size = 84
+                  assign intensity_label = 'Wahrnehmbar'
+                when 'subtil'
+                  assign bubble_size = 70
+                  assign intensity_label = 'Subtil'
+              endcase
+
+              assign ring = 'middle'
+              assign task_label = task | capitalize
+
+              case task
+                when 'hauptnote'
+                  assign ring = 'inner'
+                  assign task_label = 'Hauptnote'
+                when 'begleitnote'
+                  assign ring = 'middle'
+                  assign task_label = 'Begleitnote'
+                when 'akzent'
+                  assign ring = 'outer'
+                  assign task_label = 'Akzent'
+              endcase
+
+              assign slot = forloop.index
+              assign note_color = note_display_color | default: section.settings.accent_color
+
+              assign x = 50
+              assign y = 50
+
+              if ring == 'inner'
+                case slot
+                  when 1
+                    assign x = 50
+                    assign y = 28
+                  when 2
+                    assign x = 50
+                    assign y = 72
+                  when 3
+                    assign x = 72
+                    assign y = 50
+                  when 4
+                    assign x = 28
+                    assign y = 50
+                  when 5
+                    assign x = 66
+                    assign y = 34
+                  when 6
+                    assign x = 34
+                    assign y = 66
+                  when 7
+                    assign x = 66
+                    assign y = 66
+                  when 8
+                    assign x = 34
+                    assign y = 34
+                endcase
+              elsif ring == 'outer'
+                case slot
+                  when 1
+                    assign x = 50
+                    assign y = 9
+                  when 2
+                    assign x = 50
+                    assign y = 91
+                  when 3
+                    assign x = 91
+                    assign y = 50
+                  when 4
+                    assign x = 9
+                    assign y = 50
+                  when 5
+                    assign x = 80
+                    assign y = 20
+                  when 6
+                    assign x = 20
+                    assign y = 80
+                  when 7
+                    assign x = 80
+                    assign y = 80
+                  when 8
+                    assign x = 20
+                    assign y = 20
+                endcase
+              else
+                case slot
+                  when 1
+                    assign x = 50
+                    assign y = 18
+                  when 2
+                    assign x = 50
+                    assign y = 82
+                  when 3
+                    assign x = 82
+                    assign y = 50
+                  when 4
+                    assign x = 18
+                    assign y = 50
+                  when 5
+                    assign x = 73
+                    assign y = 27
+                  when 6
+                    assign x = 27
+                    assign y = 73
+                  when 7
+                    assign x = 73
+                    assign y = 73
+                  when 8
+                    assign x = 27
+                    assign y = 27
+                endcase
+              endif
+            %}
+
+            {% if note_name != blank %}
+              <button
+                type="button"
+                class="duftorbit__note duftorbit__note--{{ ring }}{% if note_image_url != blank %} duftorbit__note--has-image{% endif %}"
+                style="--note-x: {{ x }}%; --note-y: {{ y }}%; --note-size: {{ bubble_size }}px; --note-color: {{ note_color }};{% if note_image_url != blank %} --note-image: url('{{ note_image_url }}');{% endif %}"
+                data-orbit-note
+                data-orbit-index="{{ forloop.index0 }}"
+                data-name="{{ note_name | escape }}"
+                data-description="{{ note_description | strip_html | escape }}"
+                data-background="{{ note_image_url | escape }}"
+                data-intensity="{{ intensity_label | escape }}"
+                data-task="{{ task_label | escape }}"
+                aria-label="{{ note_name | escape }}, {{ task_label | escape }}, {{ intensity_label | escape }}"
+              ></button>
+            {% endif %}
+          {% endfor %}
+        </div>
+
+        <div class="duftorbit-info-shell" data-orbit-info-shell>
+          <aside
+            class="duftorbit-info"
+            aria-live="polite"
+            data-orbit-info
+            style="--do-info-overlay: {{ section.settings.info_overlay_opacity | divided_by: 100.0 }};"
+          >
+            <h3 class="duftorbit-info__title" data-orbit-title>Duftnote auswählen</h3>
+            <p class="duftorbit-info__description" data-orbit-description>
+              Fahre mit der Maus über eine Duftnote oder tippe sie an, um mehr zu erfahren.
+            </p>
+            <div class="duftorbit-info__badges" data-orbit-badges hidden>
+              <span data-orbit-task></span>
+              <span data-orbit-intensity></span>
+            </div>
+          </aside>
+        </div>
+      </div>
+    </div>
+  </section>
+{% elsif request.design_mode %}
+  <section id="Duftorbit-{{ section.id }}" class="duftorbit-section duftorbit-section--empty">
+    <div class="page-width">
+      <div class="duftorbit-empty">
+        <strong>Duftorbit: keine Daten gefunden</strong>
+        <p>
+          Prüfe in den Section-Einstellungen das Produkt-Metafeld sowie die technischen Feldschlüssel.
+          Erwarteter Standard: <code>custom.duftkomponente</code>.
+        </p>
+      </div>
+    </div>
+  </section>
+{% endif %}
+
+{% style %}
+  #Duftorbit-{{ section.id }} {
+    padding: 0;
+    background: var(--do-background, transparent);
+    color: var(--do-text, currentColor);
+  }
+
+  #Duftorbit-{{ section.id }} * {
+    box-sizing: border-box;
+  }
+
+  /* Section auf Desktop UND Mobil aus der Theme-/page-width-Begrenzung
+     herausziehen, damit der Hintergrund bis an beide Bildschirmkanten reicht. */
+  #Duftorbit-{{ section.id }} {
+    position: relative;
+    left: 50%;
+    width: 100vw;
+    max-width: 100vw;
+    margin-right: -50vw;
+    margin-left: -50vw;
+    overflow-x: clip;
+  }
+
+  @supports (width: 100dvw) {
+    #Duftorbit-{{ section.id }} {
+      width: 100dvw;
+      max-width: 100dvw;
+      margin-right: -50dvw;
+      margin-left: -50dvw;
+    }
+  }
+
+  #Duftorbit-{{ section.id }} .duftorbit-section__header-area {
+    width: 100%;
+    padding-top: {{ section.settings.padding_top }}px;
+    padding-bottom: 3rem;
+    background: var(--do-header-background, var(--do-background));
+  }
+
+  #Duftorbit-{{ section.id }} .duftorbit-section__header-inner,
+  #Duftorbit-{{ section.id }} .duftorbit-section__body {
+    max-width: var(--do-max-width, 1200px);
+    margin: 0 auto;
+  }
+
+  #Duftorbit-{{ section.id }} .duftorbit-section__header {
+    max-width: 760px;
+    margin: 0 auto;
+    text-align: center;
+  }
+
+  #Duftorbit-{{ section.id }} .duftorbit-section__eyebrow {
+    margin: 0 0 .7rem;
+    color: var(--do-accent);
+    font-size: 1rem;
+    font-weight: 600;
+    letter-spacing: .16em;
+    text-transform: uppercase;
+  }
+
+  #Duftorbit-{{ section.id }} .duftorbit-section__heading {
+    margin: 0;
+    color: var(--do-text);
+    font-size: clamp(2.8rem, 5vw, 4.8rem);
+    line-height: 1.08;
+  }
+
+  #Duftorbit-{{ section.id }} .duftorbit-section__intro {
+    margin-top: 1rem;
+    color: var(--do-muted);
+  }
+
+  #Duftorbit-{{ section.id }} .duftorbit-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1.25fr) minmax(300px, .9fr);
+    gap: clamp(2rem, 5vw, 6rem);
+    align-items: stretch;
+  }
+
+  #Duftorbit-{{ section.id }} .duftorbit {
+    position: relative;
+    align-self: center;
+    width: min(100%, 650px);
+    aspect-ratio: 1;
+    margin: 0 auto;
+    isolation: isolate;
+  }
+
+  #Duftorbit-{{ section.id }} .duftorbit__ring {
+    position: absolute;
+    z-index: 0;
+    top: 50%;
+    left: 50%;
+    border: 2px solid var(--do-line);
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+  }
+
+  #Duftorbit-{{ section.id }} .duftorbit__ring--outer {
+    width: 88%;
+    height: 88%;
+    border-style: solid;
+  }
+
+  #Duftorbit-{{ section.id }} .duftorbit__ring--middle {
+    width: 64%;
+    height: 64%;
+  }
+
+  #Duftorbit-{{ section.id }} .duftorbit__ring--inner {
+    width: 42%;
+    height: 42%;
+  }
+
+  #Duftorbit-{{ section.id }} .duftorbit__core {
+    position: absolute;
+    z-index: 2;
+    top: 50%;
+    left: 50%;
+    display: flex;
+    width: min(29%, 170px);
+    aspect-ratio: 1;
+    padding: 1rem;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    text-align: center;
+    border: 1px solid color-mix(in srgb, var(--do-accent) 70%, transparent);
+    border-radius: 50%;
+    background: var(--do-center);
+    transform: translate(-50%, -50%);
+  }
+
+  #Duftorbit-{{ section.id }} .duftorbit__core-logo {
+    position: relative;
+    display: block;
+    left: var(--do-core-logo-x, 0px);
+    top: var(--do-core-logo-y, 0px);
+    width: var(--do-core-logo-width, 130%);
+    max-width: 200%;
+    height: auto;
+    max-height: 164%;
+    object-fit: contain;
+  }
+
+  #Duftorbit-{{ section.id }} .duftorbit__note {
+    position: absolute;
+    z-index: 3;
+    top: var(--note-y);
+    left: var(--note-x);
+    display: flex;
+    width: min(var(--note-size), 24vw);
+    aspect-ratio: 1;
+    padding: .7rem;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    overflow: visible;
+    color: var(--do-text);
+    font: inherit;
+    text-align: center;
+    border: 1px solid color-mix(in srgb, var(--note-color) 72%, var(--do-accent));
+    border-radius: 50%;
+    background-color: var(--note-color);
+    background-position: center;
+    background-repeat: no-repeat;
+    background-size: cover;
+    box-shadow: 0 0 0 5px color-mix(in srgb, var(--do-background) 72%, transparent);
+    transform: translate(-50%, -50%);
+    cursor: pointer;
+    transition: transform .2s ease, background-color .2s ease, border-color .2s ease, filter .2s ease;
+  }
+
+  #Duftorbit-{{ section.id }} .duftorbit__note--has-image {
+    background-image: var(--note-image);
+  }
+
+  #Duftorbit-{{ section.id }} .duftorbit__note:hover,
+  #Duftorbit-{{ section.id }} .duftorbit__note:focus-visible,
+  #Duftorbit-{{ section.id }} .duftorbit__note[aria-pressed='true'] {
+    z-index: 5;
+    border-color: color-mix(in srgb, var(--note-color) 55%, var(--do-accent));
+    background-color: color-mix(in srgb, var(--note-color) 82%, var(--do-accent) 18%);
+    transform: translate(-50%, -50%) scale(1.06);
+  }
+
+  #Duftorbit-{{ section.id }} .duftorbit__note--has-image:hover,
+  #Duftorbit-{{ section.id }} .duftorbit__note--has-image:focus-visible,
+  #Duftorbit-{{ section.id }} .duftorbit__note--has-image[aria-pressed='true'] {
+    background-image: var(--note-image);
+    filter: saturate(1.08) contrast(1.04) brightness(1.04);
+  }
+
+
+
+  #Duftorbit-{{ section.id }} .duftorbit-info-shell {
+    position: relative;
+    width: calc(100% + var(--do-info-right-bleed, 0px));
+    min-width: 0;
+    min-height: 100%;
+    height: 100%;
+    margin-right: calc(-1 * var(--do-info-right-bleed, 0px));
+    overflow: hidden;
+  }
+
+  #Duftorbit-{{ section.id }} .duftorbit-info {
+    position: relative;
+    display: flex;
+    width: 100%;
+    min-height: 100%;
+    height: 100%;
+    margin: 0;
+    padding: clamp(1.8rem, 3vw, 3rem);
+    padding-left: clamp(2.7rem, 4.5vw, 4.5rem);
+    overflow: hidden;
+    align-items: flex-start;
+    justify-content: center;
+    flex-direction: column;
+    text-align: left;
+    color: var(--do-info-text, #ffffff);
+    border: 0;
+    background-position: center;
+    background-repeat: no-repeat;
+    background-size: cover;
+
+    /* Startzustand der Einfahranimation */
+    opacity: 0;
+    transform: translate3d(105%, 0, 0);
+    will-change: transform, opacity;
+  }
+
+  #Duftorbit-{{ section.id }} .duftorbit-info-shell.is-visible .duftorbit-info {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+    transition:
+      transform 1050ms cubic-bezier(0.16, 1, 0.3, 1),
+      opacity 680ms ease;
+  }
+
+  #Duftorbit-{{ section.id }} .duftorbit-info > * {
+    position: relative;
+    z-index: 1;
+  }
+
+  #Duftorbit-{{ section.id }} .duftorbit-info--has-background {
+    color: var(--do-info-text, #ffffff);
+    background-image:
+      linear-gradient(
+        rgba(0, 0, 0, var(--do-info-overlay, .48)),
+        rgba(0, 0, 0, var(--do-info-overlay, .48))
+      ),
+      var(--do-info-bg-image);
+  }
+
+  #Duftorbit-{{ section.id }} .duftorbit-info--has-background .duftorbit-info__title,
+  #Duftorbit-{{ section.id }} .duftorbit-info--has-background .duftorbit-info__description,
+  #Duftorbit-{{ section.id }} .duftorbit-info--has-background .duftorbit-info__badges span {
+    color: var(--do-info-text, #ffffff);
+  }
+
+  #Duftorbit-{{ section.id }} .duftorbit-info--has-background .duftorbit-info__badges span {
+    border-color: color-mix(in srgb, var(--do-info-text, #ffffff) 72%, transparent);
+    background: rgba(0, 0, 0, .16);
+  }
+
+  #Duftorbit-{{ section.id }} .duftorbit-info__title {
+    margin: 0;
+    color: var(--do-info-text, var(--do-text));
+    font-size: clamp(2rem, 3vw, 3.2rem);
+    line-height: 1.1;
+  }
+
+  #Duftorbit-{{ section.id }} .duftorbit-info__description {
+    min-height: 0;
+    margin: 1.5rem 0 0;
+    color: var(--do-info-text, var(--do-muted));
+  }
+
+  #Duftorbit-{{ section.id }} .duftorbit-info__badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .7rem;
+    justify-content: flex-start;
+    margin-top: 1.5rem;
+  }
+
+  #Duftorbit-{{ section.id }} .duftorbit-info__badges[hidden] {
+    display: none;
+  }
+
+  #Duftorbit-{{ section.id }} .duftorbit-info__badges span {
+    padding: .45rem .8rem;
+    color: var(--do-info-text, var(--do-text));
+    border: 1px solid color-mix(in srgb, var(--do-info-text, var(--do-line)) 72%, transparent);
+    border-radius: 999px;
+    font-size: 1.1rem;
+  }
+
+  #Duftorbit-{{ section.id }} .duftorbit--animation-pending .duftorbit__ring {
+    opacity: 0;
+  }
+
+  #Duftorbit-{{ section.id }} .duftorbit--animation-pending .duftorbit__note {
+    opacity: 0;
+    pointer-events: none;
+  }
+
+
+
+  #Duftorbit-{{ section.id }} .duftorbit--animation-pending .duftorbit__note.is-arrived {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  #Duftorbit-{{ section.id }} .duftorbit--animation-pending .duftorbit__ring.is-arrived {
+    opacity: 1;
+  }
+
+  #Duftorbit-{{ section.id }} .duftorbit-empty {
+    padding: 2rem;
+    border: 1px dashed currentColor;
+  }
+
+  #Duftorbit-{{ section.id }} .duftorbit-empty p {
+    margin-bottom: 0;
+  }
+
+  @media screen and (max-width: 989px) {
+    #Duftorbit-{{ section.id }} .duftorbit-layout {
+      grid-template-columns: 1fr;
+    }
+
+    #Duftorbit-{{ section.id }} .duftorbit-info-shell {
+      width: min(100%, 650px);
+      min-height: 420px;
+      height: auto;
+      margin: 0 auto;
+    }
+
+    #Duftorbit-{{ section.id }} .duftorbit-info {
+      width: 100%;
+      min-height: 420px;
+      height: 100%;
+      margin: 0;
+    }
+  }
+
+  @media screen and (max-width: 749px) {
+    /*
+      Den vollständigen Section-Container aus einer eventuell geerbten
+      Seitenbreite herausziehen. Dadurch entstehen weder rechts noch links
+      weiße Ränder, auch wenn das Theme die Section in einem gepaddeten
+      Wrapper ausgibt.
+    */
+    #Duftorbit-{{ section.id }} {
+      position: relative;
+      left: 50%;
+      width: 100vw;
+      max-width: 100vw;
+      margin-right: -50vw;
+      margin-left: -50vw;
+      overflow-x: hidden;
+    }
+
+    @supports (width: 100dvw) {
+      #Duftorbit-{{ section.id }} {
+        width: 100dvw;
+        max-width: 100dvw;
+        margin-right: -50dvw;
+        margin-left: -50dvw;
+      }
+    }
+
+    #Duftorbit-{{ section.id }} .duftorbit-section__header-area,
+    #Duftorbit-{{ section.id }} .duftorbit-section__body {
+      width: 100%;
+      max-width: none;
+      margin: 0;
+    }
+
+    #Duftorbit-{{ section.id }} .duftorbit-section__header-area {
+      /*
+        Mobile Gesamthöhe bleibt exakt wie vorher:
+        vorher = padding_top aus Section + 1.8rem unten.
+        Jetzt wird genau diese Summe 50/50 auf oben und unten verteilt,
+        damit der komplette Textblock vertikal mittig sitzt.
+      */
+      padding-top: calc({{ section.settings.padding_top | divided_by: 2.0 }}px + .9rem);
+      padding-bottom: calc({{ section.settings.padding_top | divided_by: 2.0 }}px + .9rem);
+    }
+
+    #Duftorbit-{{ section.id }} .duftorbit-section__header-inner {
+      width: 100%;
+      max-width: none;
+      margin: 0;
+      padding-right: 20px;
+      padding-left: 20px;
+    }
+
+    #Duftorbit-{{ section.id }} .duftorbit-section__body {
+      padding-right: 0 !important;
+      padding-left: 0 !important;
+      background: var(--do-background);
+    }
+
+    #Duftorbit-{{ section.id }} .duftorbit-section__header {
+      text-align: left;
+    }
+
+    #Duftorbit-{{ section.id }} .duftorbit-layout {
+      width: 100%;
+      gap: 1.25rem;
+    }
+
+    #Duftorbit-{{ section.id }} .duftorbit {
+      width: 88vw;
+      max-width: 420px;
+      margin-right: auto;
+      margin-left: auto;
+    }
+
+    @supports (width: 100dvw) {
+      #Duftorbit-{{ section.id }} .duftorbit {
+        width: 88dvw;
+      }
+    }
+
+    #Duftorbit-{{ section.id }} .duftorbit__core {
+      width: 30%;
+      padding: .55rem;
+    }
+
+    #Duftorbit-{{ section.id }} .duftorbit__note {
+      width: min(var(--note-size), 20vw);
+      min-width: 50px;
+      padding: .35rem;
+    }
+
+    #Duftorbit-{{ section.id }} .duftorbit-info-shell {
+      width: 100%;
+      max-width: none;
+      min-height: 189px;
+      height: 189px;
+      margin: 0;
+    }
+
+    #Duftorbit-{{ section.id }} .duftorbit-info {
+      width: 100%;
+      max-width: none;
+      min-height: 189px;
+      height: 189px;
+      margin: 0;
+      padding: 1rem 1.5rem;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+    }
+
+    #Duftorbit-{{ section.id }} .duftorbit-info__title {
+      width: 100%;
+      margin-right: auto;
+      margin-left: auto;
+      text-align: center;
+    }
+
+    #Duftorbit-{{ section.id }} .duftorbit-info__description {
+      width: 100%;
+      max-width: 34ch;
+      margin: .8rem auto 0;
+      text-align: center;
+    }
+
+    /* Mobil wie in der Duftgalaxie: Aufgabe und Intensität ausblenden. */
+    #Duftorbit-{{ section.id }} .duftorbit-info__badges {
+      display: none !important;
+    }
+  }
+{% endstyle %}
+
+<script>
+  (() => {
+    const section = document.getElementById('Duftorbit-{{ section.id }}');
+    if (!section) return;
+
+    const root = section.querySelector('[data-duftorbit-root]');
+    if (!root || root.dataset.initialized === 'true') return;
+    root.dataset.initialized = 'true';
+
+    const orbit = root.querySelector('.duftorbit');
+    const notes = Array.from(root.querySelectorAll('[data-orbit-note]'));
+    const rings = [
+      root.querySelector('.duftorbit__ring--inner'),
+      root.querySelector('.duftorbit__ring--middle'),
+      root.querySelector('.duftorbit__ring--outer')
+    ].filter(Boolean);
+    const core = root.querySelector('.duftorbit__core');
+    const infoShell = root.querySelector('[data-orbit-info-shell]');
+    const info = root.querySelector('[data-orbit-info]');
+    const title = root.querySelector('[data-orbit-title]');
+    const description = root.querySelector('[data-orbit-description]');
+    const badges = root.querySelector('[data-orbit-badges]');
+    const task = root.querySelector('[data-orbit-task]');
+    const intensity = root.querySelector('[data-orbit-intensity]');
+
+    const syncInfoRightBleed = () => {
+      if (!infoShell || window.matchMedia('(max-width: 989px)').matches) {
+        if (infoShell) infoShell.style.setProperty('--do-info-right-bleed', '0px');
+        return;
+      }
+
+      /*
+        Desktop: nicht an page-width / Section-Maxbreite orientieren,
+        sondern direkt bis zum echten rechten Viewportrand erweitern.
+      */
+      infoShell.style.setProperty('--do-info-right-bleed', '0px');
+
+      window.requestAnimationFrame(() => {
+        const shellRight = infoShell.getBoundingClientRect().right;
+        const viewportRight = document.documentElement.clientWidth;
+        const rightGap = Math.max(viewportRight - shellRight, 0);
+
+        infoShell.style.setProperty(
+          '--do-info-right-bleed',
+          `${Math.ceil(rightGap) + 1}px`
+        );
+      });
+    };
+
+    const selectNote = (button) => {
+      notes.forEach((note) => note.setAttribute('aria-pressed', String(note === button)));
+
+      title.textContent = button.dataset.name || '';
+      description.textContent = button.dataset.description || 'Für diese Duftnote ist noch keine Beschreibung hinterlegt.';
+      task.textContent = button.dataset.task || '';
+      intensity.textContent = button.dataset.intensity || '';
+      badges.hidden = false;
+
+      if (info) {
+        const background = button.dataset.background || '';
+
+        if (background) {
+          info.style.setProperty('--do-info-bg-image', `url(${JSON.stringify(background)})`);
+          info.classList.add('duftorbit-info--has-background');
+        } else {
+          info.style.removeProperty('--do-info-bg-image');
+          info.classList.remove('duftorbit-info--has-background');
+        }
+      }
+    };
+
+    const preloadedBackgroundImages = [];
+    const imageReadyPromises = new Map();
+    let backgroundsPreloadStarted = false;
+
+    const ensureImageReady = (url) => {
+      if (!url) return Promise.resolve();
+
+      if (imageReadyPromises.has(url)) {
+        return imageReadyPromises.get(url);
+      }
+
+      const promise = new Promise((resolve) => {
+        const image = new Image();
+        image.decoding = 'async';
+
+        const finish = () => {
+          if (typeof image.decode === 'function') {
+            image.decode().catch(() => {}).finally(resolve);
+          } else {
+            resolve();
+          }
+        };
+
+        image.addEventListener('load', finish, { once: true });
+        image.addEventListener('error', resolve, { once: true });
+        image.src = url;
+
+        if (image.complete) finish();
+        preloadedBackgroundImages.push(image);
+      });
+
+      imageReadyPromises.set(url, promise);
+      return promise;
+    };
+
+    const preloadBackgrounds = () => {
+      if (backgroundsPreloadStarted) return;
+      backgroundsPreloadStarted = true;
+
+      const urls = new Set(
+        notes
+          .map((note) => note.dataset.background)
+          .filter(Boolean)
+      );
+
+      urls.forEach((url, index) => {
+        const image = new Image();
+        image.decoding = 'async';
+
+        if ('fetchPriority' in image) {
+          image.fetchPriority = index === 0 ? 'auto' : 'low';
+        }
+
+        image.src = url;
+        preloadedBackgroundImages.push(image);
+      });
+
+      root._duftorbitPreloadedBackgroundImages = preloadedBackgroundImages;
+    };
+
+    const revealWithoutMotion = () => {
+      orbit.classList.remove('duftorbit--animation-pending');
+      notes.forEach((note) => note.classList.add('is-arrived'));
+      rings.forEach((ring) => ring.classList.add('is-arrived'));
+      if (infoShell) infoShell.classList.add('is-visible');
+    };
+
+    const createSpiralFrames = (button, centerX, centerY) => {
+      const rect = button.getBoundingClientRect();
+      const finalX = rect.left + rect.width / 2;
+      const finalY = rect.top + rect.height / 2;
+      const dx = finalX - centerX;
+      const dy = finalY - centerY;
+      const distance = Math.hypot(dx, dy);
+      const finalAngle = Math.atan2(dy, dx);
+      const turns = Math.PI * 1.35;
+      const frames = [];
+      const steps = 10;
+
+      for (let step = 0; step <= steps; step += 1) {
+        const progress = step / steps;
+        const radius = distance * progress;
+        const angle = finalAngle - turns * (1 - progress);
+        const currentX = centerX + radius * Math.cos(angle);
+        const currentY = centerY + radius * Math.sin(angle);
+        const offsetX = currentX - finalX;
+        const offsetY = currentY - finalY;
+        const scale = 0.16 + 0.84 * progress;
+        const rotation = -190 * (1 - progress);
+
+        frames.push({
+          transform: `translate(calc(-50% + ${offsetX}px), calc(-50% + ${offsetY}px)) rotate(${rotation}deg) scale(${scale})`,
+          opacity: progress < 0.08 ? 0 : 1,
+          offset: progress
+        });
+      }
+
+      return frames;
+    };
+
+    let entranceAnimations = [];
+    let entranceFinishTimer = null;
+    let infoRevealTimer = null;
+    let infoIsInViewport = false;
+    let entranceGeneration = 0;
+
+    const hideInfo = () => {
+      if (infoRevealTimer) {
+        window.clearTimeout(infoRevealTimer);
+        infoRevealTimer = null;
+      }
+
+      if (!infoShell) return;
+
+      infoShell.classList.remove('is-visible');
+
+      /* Transition beim Reset kurz deaktivieren, damit die Box unsichtbar
+         sofort wieder rechts außerhalb des Maskenbereichs steht. */
+      info.style.transition = 'none';
+      window.requestAnimationFrame(() => {
+        info.style.removeProperty('transition');
+      });
+    };
+
+    const revealInfo = async (generation) => {
+      if (!infoShell || !info) return;
+      if (generation !== entranceGeneration) return;
+      if (orbit.dataset.animationPlayed !== 'true') return;
+
+      /* Auf Mobil erst animieren, wenn der Infobox-Bereich wirklich sichtbar ist. */
+      if (window.matchMedia('(max-width: 749px)').matches && !infoIsInViewport) {
+        return;
+      }
+
+      const selectedNote =
+        root.querySelector('[data-orbit-note][aria-pressed="true"]') ||
+        root.querySelector('[data-orbit-note]');
+      const selectedBackground = selectedNote?.dataset.background || '';
+
+      await ensureImageReady(selectedBackground);
+
+      if (generation !== entranceGeneration) return;
+      if (orbit.dataset.animationPlayed !== 'true') return;
+
+      /* Zwei Frames garantieren, dass Startposition und Zielposition
+         als zwei verschiedene Renderzustände wahrgenommen werden. */
+      await new Promise((resolve) => {
+        window.requestAnimationFrame(() => {
+          window.requestAnimationFrame(resolve);
+        });
+      });
+
+      if (generation !== entranceGeneration) return;
+      infoShell.classList.add('is-visible');
+    };
+
+    const scheduleInfoReveal = (generation) => {
+      if (infoRevealTimer) {
+        window.clearTimeout(infoRevealTimer);
+      }
+
+      infoRevealTimer = window.setTimeout(() => {
+        revealInfo(generation);
+      }, 520);
+    };
+
+    /*
+      Default-Duftstoff rotiert bei jedem erneuten Eintritt in die Section.
+      Die Reihenfolge entspricht exakt der Reihenfolge der Duftkomponenten
+      im Produkt-Metafeld bzw. der daraus erzeugten DOM-Reihenfolge.
+    */
+    let defaultNoteIndex = 0;
+    let defaultSelectionInitialized = false;
+
+    const selectDefaultNoteForEntrance = () => {
+      if (notes.length === 0 || !{{ section.settings.select_first_note | json }}) return;
+
+      if (defaultSelectionInitialized) {
+        defaultNoteIndex = (defaultNoteIndex + 1) % notes.length;
+      } else {
+        defaultSelectionInitialized = true;
+        defaultNoteIndex = 0;
+      }
+
+      selectNote(notes[defaultNoteIndex]);
+    };
+
+    const resetEntranceAnimation = () => {
+      if (!orbit) return;
+
+      entranceGeneration += 1;
+      hideInfo();
+
+      if (entranceFinishTimer) {
+        window.clearTimeout(entranceFinishTimer);
+        entranceFinishTimer = null;
+      }
+
+      entranceAnimations.forEach((animation) => {
+        try {
+          animation.cancel();
+        } catch (error) {}
+      });
+      entranceAnimations = [];
+
+      delete orbit.dataset.animationPlayed;
+      orbit.classList.add('duftorbit--animation-pending');
+
+      notes.forEach((note) => {
+        note.classList.remove('is-arrived');
+      });
+
+      rings.forEach((ring) => {
+        ring.classList.remove('is-arrived');
+      });
+    };
+
+    const runEntranceAnimation = () => {
+      if (!orbit || orbit.dataset.animationPlayed === 'true') return;
+      orbit.dataset.animationPlayed = 'true';
+
+      const currentGeneration = ++entranceGeneration;
+      hideInfo();
+      selectDefaultNoteForEntrance();
+
+      if (window.matchMedia('(prefers-reduced-motion: reduce)').matches || !Element.prototype.animate) {
+        revealWithoutMotion();
+        return;
+      }
+
+      const orbitRect = orbit.getBoundingClientRect();
+      const centerX = orbitRect.left + orbitRect.width / 2;
+      const centerY = orbitRect.top + orbitRect.height / 2;
+      const coreRect = core ? core.getBoundingClientRect() : { width: orbitRect.width * 0.29 };
+      const easing = 'cubic-bezier(0.16, 1, 0.3, 1)';
+
+      rings.forEach((ring, index) => {
+        const ringRect = ring.getBoundingClientRect();
+        const startScale = Math.max(0.12, coreRect.width / ringRect.width);
+        const animation = ring.animate(
+          [
+            {
+              transform: `translate(-50%, -50%) scale(${startScale})`,
+              opacity: 0
+            },
+            {
+              transform: 'translate(-50%, -50%) scale(1)',
+              opacity: 1
+            }
+          ],
+          {
+            duration: 1860,
+            delay: index * 225,
+            easing,
+            fill: 'forwards'
+          }
+        );
+
+        entranceAnimations.push(animation);
+
+        animation.finished.then(() => {
+          if (orbit.dataset.animationPlayed === 'true') {
+            ring.classList.add('is-arrived');
+          }
+          animation.cancel();
+        }).catch(() => {});
+      });
+
+      notes.forEach((button, index) => {
+        const animation = button.animate(
+          createSpiralFrames(button, centerX, centerY),
+          {
+            duration: 2040,
+            delay: 210 + index * 96,
+            easing,
+            fill: 'forwards'
+          }
+        );
+
+        entranceAnimations.push(animation);
+
+        animation.finished.then(() => {
+          if (orbit.dataset.animationPlayed === 'true') {
+            button.classList.add('is-arrived');
+          }
+          animation.cancel();
+        }).catch(() => {});
+      });
+
+      scheduleInfoReveal(currentGeneration);
+
+      const totalDuration = 2040 + 210 + Math.max(notes.length - 1, 0) * 96;
+
+      if (entranceFinishTimer) {
+        window.clearTimeout(entranceFinishTimer);
+      }
+
+      entranceFinishTimer = window.setTimeout(() => {
+        if (orbit.dataset.animationPlayed === 'true') {
+          orbit.classList.remove('duftorbit--animation-pending');
+        }
+        entranceFinishTimer = null;
+      }, totalDuration + 120);
+    };
+
+    notes.forEach((button) => {
+      button.setAttribute('aria-pressed', 'false');
+      button.addEventListener('mouseenter', () => selectNote(button));
+      button.addEventListener('focus', () => selectNote(button));
+      button.addEventListener('click', () => selectNote(button));
+    });
+
+    syncInfoRightBleed();
+
+    window.addEventListener('resize', () => {
+      syncInfoRightBleed();
+    }, { passive: true });
+
+    if ('ResizeObserver' in window && infoShell) {
+      const infoResizeObserver = new ResizeObserver(syncInfoRightBleed);
+      infoResizeObserver.observe(root);
+      infoResizeObserver.observe(infoShell);
+    }
+
+
+    if (notes.length > 0 && {{ section.settings.select_first_note | json }}) {
+      selectNote(notes[0]);
+    }
+
+    if ('IntersectionObserver' in window) {
+      const preloadObserver = new IntersectionObserver((entries) => {
+        if (!entries.some((entry) => entry.isIntersecting)) return;
+
+        preloadObserver.disconnect();
+        preloadBackgrounds();
+      }, {
+        threshold: 0,
+        rootMargin: '1200px 0px 1200px 0px'
+      });
+
+      preloadObserver.observe(section);
+    } else {
+      preloadBackgrounds();
+    }
+
+    if ('requestIdleCallback' in window) {
+      window.requestIdleCallback(preloadBackgrounds, { timeout: 1800 });
+    } else {
+      window.setTimeout(preloadBackgrounds, 700);
+    }
+
+    if ('IntersectionObserver' in window && infoShell) {
+      const infoObserver = new IntersectionObserver((entries) => {
+        const entry = entries[0];
+        infoIsInViewport = Boolean(entry && entry.isIntersecting && entry.intersectionRatio >= 0.12);
+
+        if (
+          infoIsInViewport &&
+          orbit.dataset.animationPlayed === 'true' &&
+          !infoShell.classList.contains('is-visible')
+        ) {
+          revealInfo(entranceGeneration);
+        }
+      }, {
+        threshold: [0, 0.12, 0.35],
+        rootMargin: '0px 0px -4% 0px'
+      });
+
+      infoObserver.observe(infoShell);
+    }
+
+    if ('IntersectionObserver' in window) {
+      /*
+        Start: Sobald genügend vom eigentlichen Orbit sichtbar ist.
+        Der Observer bleibt aktiv, damit die Animation nach einem Reset
+        beim erneuten Hineinscrollen wieder starten kann.
+      */
+      const entranceObserver = new IntersectionObserver((entries) => {
+        const entry = entries[0];
+        if (!entry || !entry.isIntersecting || entry.intersectionRatio < 0.2) return;
+
+        window.requestAnimationFrame(() => {
+          runEntranceAnimation();
+        });
+      }, {
+        threshold: [0, 0.2],
+        rootMargin: '0px 0px -8% 0px'
+      });
+
+      entranceObserver.observe(orbit);
+
+      /*
+        Reset: Erst wenn die komplette Duftorbit-Section den Viewport
+        verlassen hat. Dadurch wird nicht schon zurückgesetzt, nur weil
+        innerhalb der Section von Überschrift zu Orbit/Infobox gescrollt wird.
+      */
+      const resetObserver = new IntersectionObserver((entries) => {
+        const entry = entries[0];
+        if (!entry) return;
+
+        if (!entry.isIntersecting) {
+          resetEntranceAnimation();
+        }
+      }, {
+        threshold: 0
+      });
+
+      resetObserver.observe(section);
+    } else {
+      runEntranceAnimation();
+    }
+  })();
+</script>
+
+{% schema %}
+{
+  "name": "Duftorbit",
+  "tag": "section",
+  "class": "section",
+  "settings": [
+    {
+      "type": "header",
+      "content": "Inhalt"
+    },
+    {
+      "type": "text",
+      "id": "eyebrow",
+      "label": "Überüberschrift",
+      "default": "Olfaktorisches Profil"
+    },
+    {
+      "type": "text",
+      "id": "heading",
+      "label": "Überschrift",
+      "default": "Duftorbit"
+    },
+    {
+      "type": "richtext",
+      "id": "intro",
+      "label": "Einleitung",
+      "default": "<p>Die Größe zeigt die Intensität, die Nähe zum Zentrum die Aufgabe jeder Duftnote.</p>"
+    },
+    {
+      "type": "checkbox",
+      "id": "select_first_note",
+      "label": "Erste Duftnote automatisch auswählen",
+      "default": true
+    },
+    {
+      "type": "header",
+      "content": "Datenverknüpfung"
+    },
+    {
+      "type": "paragraph",
+      "content": "Trage hier die technischen Schlüssel aus Einstellungen → Benutzerdefinierte Daten ein. Das Produktlogo wird standardmäßig aus custom.parfumname_schwarz und das Notenbild aus duftabbildung gezogen."
+    },
+    {
+      "type": "text",
+      "id": "metafield_namespace",
+      "label": "Produkt-Metafeld: Namespace",
+      "default": "custom"
+    },
+    {
+      "type": "text",
+      "id": "product_metafield_key",
+      "label": "Produkt-Metafeld: Schlüssel",
+      "default": "duftkomponente"
+    },
+    {
+      "type": "text",
+      "id": "component_note_key",
+      "label": "Duftkomponente: Duftnote-Referenz",
+      "default": "duftnote"
+    },
+    {
+      "type": "text",
+      "id": "component_intensity_key",
+      "label": "Duftkomponente: Intensität",
+      "default": "intensitat"
+    },
+    {
+      "type": "text",
+      "id": "component_task_key",
+      "label": "Duftkomponente: Aufgabe",
+      "default": "aufgabe"
+    },
+    {
+      "type": "text",
+      "id": "note_name_key",
+      "label": "Duftnote: Anzeigename",
+      "default": "name"
+    },
+    {
+      "type": "text",
+      "id": "note_description_key",
+      "label": "Duftnote: Beschreibung",
+      "default": "beschreibung"
+    },
+    {
+      "type": "text",
+      "id": "note_image_key",
+      "label": "Duftnote: Abbildung (Kreis und Infobox)",
+      "default": "duftabbildung"
+    },
+    {
+      "type": "text",
+      "id": "note_color_key",
+      "label": "Duftnote: Darstellungsfarbe",
+      "default": "darstellungsfarbe"
+    },
+    {
+      "type": "text",
+      "id": "product_logo_namespace",
+      "label": "Produktlogo: Namespace",
+      "default": "custom"
+    },
+    {
+      "type": "text",
+      "id": "product_logo_key",
+      "label": "Produktlogo: Schlüssel",
+      "default": "parfumname_schwarz"
+    },
+    {
+      "type": "header",
+      "content": "Zentrum"
+    },
+    {
+      "type": "image_picker",
+      "id": "center_logo",
+      "label": "Fallback-Logo im mittleren Kreis"
+    },
+    {
+      "type": "color",
+      "id": "center_color",
+      "label": "Farbe des mittleren Kreises",
+      "default": "#E9E1D5"
+    },
+    {
+      "type": "header",
+      "content": "Informationskasten"
+    },
+    {
+      "type": "color",
+      "id": "info_text_color",
+      "label": "Textfarbe der Infobox",
+      "default": "#FFFFFF"
+    },
+    {
+      "type": "range",
+      "id": "info_overlay_opacity",
+      "min": 0,
+      "max": 80,
+      "step": 5,
+      "unit": "%",
+      "label": "Abdunklung des Hintergrundbildes",
+      "default": 45
+    },
+    {
+      "type": "header",
+      "content": "Design"
+    },
+    {
+      "type": "color",
+      "id": "header_background_color",
+      "label": "Hintergrundfarbe des Kopfbereichs",
+      "default": "#F7F4EE"
+    },
+    {
+      "type": "color",
+      "id": "accent_color",
+      "label": "Akzentfarbe",
+      "default": "#9B7A3E"
+    },
+    {
+      "type": "color",
+      "id": "background_color",
+      "label": "Hintergrundfarbe von Orbit und Infobox",
+      "default": "#F7F4EE"
+    },
+    {
+      "type": "color",
+      "id": "text_color",
+      "label": "Textfarbe",
+      "default": "#211E1A"
+    },
+    {
+      "type": "color",
+      "id": "muted_color",
+      "label": "Sekundäre Textfarbe",
+      "default": "#6F675D"
+    },
+    {
+      "type": "color",
+      "id": "line_color",
+      "label": "Linienfarbe",
+      "default": "#D7CFC2"
+    },
+    {
+      "type": "range",
+      "id": "max_width",
+      "min": 900,
+      "max": 1500,
+      "step": 50,
+      "unit": "px",
+      "label": "Maximale Breite",
+      "default": 1200
+    },
+    {
+      "type": "range",
+      "id": "padding_top",
+      "min": 0,
+      "max": 120,
+      "step": 4,
+      "unit": "px",
+      "label": "Abstand oben",
+      "default": 64
+    }
+  ],
+  "presets": [
+    {
+      "name": "Duftorbit"
+    }
+  ]
+}
+{% endschema %}
