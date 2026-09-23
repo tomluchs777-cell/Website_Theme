@@ -90,6 +90,9 @@
 
   {% liquid
     assign has_content = false
+    if request.page_type == 'password'
+      assign has_content = true
+    endif
 
     if section.settings.logo != blank
       assign has_content = true
@@ -140,6 +143,10 @@
           </div>
         {% endif %}
 
+        {% if request.page_type == 'password' %}
+          {% render 'cinematic-password-form', section_id: section.id %}
+        {% endif %}
+
         {% if section.settings.heading != blank %}
           <h1 class="ts-cinematic-hero__heading">
             {{ section.settings.heading }}
@@ -165,7 +172,7 @@
     </div>
   {% endif %}
 
-  {% if section.settings.show_scroll_indicator %}
+  {% if section.settings.show_scroll_indicator and request.page_type != 'password' %}
     <button
       type="button"
       class="ts-cinematic-hero__scroll"
