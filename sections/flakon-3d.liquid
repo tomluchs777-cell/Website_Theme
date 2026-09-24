@@ -1,0 +1,26 @@
+{{ 'ts-flakon-3d.css' | asset_url | stylesheet_tag }}
+<ts-flakon-viewer
+  class="ts-flakon-viewer"
+  style="--flakon-background: {{ section.settings.background }}; --flakon-height: {{ section.settings.height }}px;"
+  data-module="{{ 'ts-flakon-scene.js' | asset_url }}"
+  data-fill="{{ section.settings.fill | divided_by: 100.0 }}"
+  aria-label="Interaktiver Parfumflakon"
+>
+  <div class="ts-flakon-viewer__stage" tabindex="0" role="group" aria-label="3D-Flakon drehen" aria-describedby="FlakonHelp-{{ section.id }}">
+    <img class="ts-flakon-viewer__poster" src="{{ 'ts-flakon-poster.png' | asset_url }}" width="900" height="900" alt="Glasflakon mit goldfarbenem Deckel und heller Parfumflüssigkeit" loading="lazy">
+  </div>
+  <p id="FlakonHelp-{{ section.id }}" class="ts-flakon-viewer__sr">Mit Maus oder Finger am Flakon ziehen. Alternativ mit den Pfeiltasten drehen, mit Pos1 zurücksetzen.</p>
+  <p class="ts-flakon-viewer__status" role="status"></p>
+</ts-flakon-viewer>
+<script type="module" src="{{ 'ts-flakon-3d.js' | asset_url }}"></script>
+{% schema %}
+{
+  "name": "Flakon 3D",
+  "settings": [
+    { "type": "color", "id": "background", "label": "Hintergrund", "default": "#fef9e0" },
+    { "type": "range", "id": "height", "label": "Höhe Desktop", "min": 400, "max": 900, "step": 20, "unit": "px", "default": 680 },
+    { "type": "range", "id": "fill", "label": "Füllstand", "min": 10, "max": 90, "step": 5, "unit": "%", "default": 70 }
+  ],
+  "presets": [{ "name": "Flakon 3D" }]
+}
+{% endschema %}
