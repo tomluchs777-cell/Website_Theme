@@ -265,6 +265,7 @@
       "block_order": [
         "topic_r7PT4G"
       ],
+      "disabled": true,
       "name": "TS – Manufaktur Vorschau",
       "settings": {
         "bar_text": "Das Maison entdecken",
