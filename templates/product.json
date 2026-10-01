@@ -93,7 +93,7 @@
         "muted_color": "#616161",
         "button_background": "#000000",
         "button_text_color": "#ffffff",
-        "image_fit": "contain",
+        "image_fit": "cover",
         "header_height_fallback": 56,
         "panel_padding_top": 48,
         "panel_padding_horizontal": 56,
